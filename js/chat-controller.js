@@ -1009,6 +1009,7 @@ If you understand, follow these instructions for every relevant question. Do NOT
         debugLog('synthesizeFinalAnswer', summaries);
         if (!summaries || !state.originalUserQuestion) return;
         const selectedModel = SettingsController.getSettings().selectedModel;
+        const FINAL_ANSWER_TIMEOUT = 88000; // 88 seconds, match summarization timeout
         // Use a Chain of Thought prompt for the final answer
         const prompt = `Based on the following summaries, please use step-by-step reasoning to answer the original question. Think carefully and show your reasoning process before giving your final answer.\n\nFormat your response like this:\nThinking: [detailed reasoning process, exploring different angles and considerations]\nAnswer: [your final, concise answer based on the reasoning above]\n\nSummaries:\n${summaries}\n\nOriginal question: ${state.originalUserQuestion}`;
         try {
@@ -1017,7 +1018,7 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 const res = await ApiService.sendOpenAIRequest(selectedModel, [
                     { role: 'system', content: 'You are an assistant that synthesizes information from multiple sources and provides a final answer.' },
                     { role: 'user', content: prompt }
-                ]);
+                ], FINAL_ANSWER_TIMEOUT);
                 finalAnswer = res.choices[0].message.content.trim();
             } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
                 const session = ApiService.createGeminiSession(selectedModel);
