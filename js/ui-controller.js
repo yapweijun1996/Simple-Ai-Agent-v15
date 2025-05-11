@@ -298,7 +298,8 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = message;
-            bar.style.visibility = 'visible';
+            bar.classList.add('chat-app__status-bar--active');
+            bar.style.visibility = '';
         }
     }
 
@@ -306,7 +307,8 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = '';
-            bar.style.visibility = 'hidden';
+            bar.classList.remove('chat-app__status-bar--active');
+            bar.style.visibility = '';
         }
     }
 
@@ -315,79 +317,17 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message}`;
-            bar.style.visibility = 'visible';
+            bar.classList.add('chat-app__status-bar--active');
+            bar.style.visibility = '';
         }
     }
     function hideSpinner() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = '';
-            bar.style.visibility = 'hidden';
+            bar.classList.remove('chat-app__status-bar--active');
+            bar.style.visibility = '';
         }
-    }
-
-    /**
-     * Adds a search result to the chat window with a 'Read More' button
-     * @param {Object} result - {title, url, snippet}
-     * @param {Function} onReadMore - Callback when 'Read More' is clicked
-     */
-    function addSearchResult(result, onReadMore) {
-        if (shownUrls.has(result.url)) return;
-        shownUrls.add(result.url);
-        const chatWindow = document.getElementById('chat-window');
-        const article = document.createElement('article');
-        article.className = 'chat-app__message ai-message search-result';
-        // Improved card structure
-        const card = document.createElement('div');
-        card.className = 'search-result-card';
-        // Header with icon and link
-        const header = document.createElement('div');
-        header.className = 'search-result-header';
-        header.innerHTML = `<span class="search-result-icon" aria-hidden="true">🔍</span><a href="${result.url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(result.title)}</a>`;
-        card.appendChild(header);
-        // URL
-        const urlDiv = document.createElement('div');
-        urlDiv.className = 'search-result-url';
-        urlDiv.innerHTML = `<a href="${result.url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(result.url)}</a>`;
-        card.appendChild(urlDiv);
-        // Snippet
-        const snippetDiv = document.createElement('div');
-        snippetDiv.className = 'search-result-snippet';
-        snippetDiv.textContent = result.snippet;
-        card.appendChild(snippetDiv);
-        article.appendChild(card);
-        chatWindow.appendChild(article);
-        article.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-
-    /**
-     * Adds a read_url result to the chat window, with optional 'Read More' if more content is available
-     * @param {string} url
-     * @param {string} snippet
-     * @param {boolean} hasMore
-     */
-    function addReadResult(url, snippet, hasMore) {
-        urlOffsets.set(url, (urlOffsets.get(url) || 0) + snippet.length);
-        const chatWindow = document.getElementById('chat-window');
-        const article = document.createElement('article');
-        article.className = 'chat-app__message ai-message read-result';
-        // Improved card structure
-        const card = document.createElement('div');
-        card.className = 'read-result-card';
-        // Header with icon and link
-        const header = document.createElement('div');
-        header.className = 'read-result-header';
-        header.innerHTML = `<span class="read-result-icon" aria-hidden="true">🔗</span><a href="${url}" target="_blank" rel="noopener noreferrer" tabindex="0">Source</a>`;
-        card.appendChild(header);
-        // Snippet with fade if long
-        const snippetDiv = document.createElement('div');
-        snippetDiv.className = 'read-result-snippet';
-        snippetDiv.textContent = snippet + (hasMore ? '...' : '');
-        if (snippet.length > 600 || hasMore) snippetDiv.classList.add('faded');
-        card.appendChild(snippetDiv);
-        article.appendChild(card);
-        chatWindow.appendChild(article);
-        article.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
     /**
@@ -416,14 +356,16 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = message;
-            bar.style.visibility = 'visible';
+            bar.classList.add('chat-app__status-bar--active');
             bar.setAttribute('role', 'alert');
             bar.setAttribute('aria-live', 'assertive');
+            bar.style.visibility = '';
             setTimeout(() => {
                 bar.textContent = '';
-                bar.style.visibility = 'hidden';
+                bar.classList.remove('chat-app__status-bar--active');
                 bar.removeAttribute('role');
                 bar.removeAttribute('aria-live');
+                bar.style.visibility = '';
             }, 3000);
         }
     }
