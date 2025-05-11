@@ -532,6 +532,37 @@ body:not(.light-mode) .chat-app__message.ai-message {
     height: 1.5em;
     margin-right: 6px;
     font-size: 1.2em;
+    flex-shrink: 0;
+}
+.status-bar__msg {
+    flex: 1 1 auto;
+    text-align: left;
+    min-width: 0;
+    word-break: break-word;
+}
+.status-bar__close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.3em;
+    margin-left: 10px;
+    cursor: pointer;
+    padding: 0 6px;
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s;
+    align-self: center;
+}
+.status-bar__close:hover, .status-bar__close:focus {
+    background: #eaf3ff;
+    color: #007bff;
+    outline: none;
+}
+body.dark-mode .status-bar__close {
+    color: #aaa;
+}
+body.dark-mode .status-bar__close:hover, body.dark-mode .status-bar__close:focus {
+    background: #23272e;
+    color: #4f8cff;
 }
 .status-bar__progress {
     position: absolute;

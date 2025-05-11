@@ -293,42 +293,79 @@ const UIController = (function() {
         return messageElement;
     }
 
-    // Add status bar control methods
-    function showStatus(message) {
+    /**
+     * Shows a status message in the status bar with optional type and auto-hide
+     * @param {string} message - The status message
+     * @param {string} [type] - Type: 'info', 'search', 'success', 'error', 'loading' (default: 'info')
+     * @param {Object} [options] - { autoHide: boolean, duration: ms, dismissible: boolean }
+     */
+    function showStatus(message, type = 'info', options = {}) {
         const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.textContent = message;
-            bar.classList.add('chat-app__status-bar--active');
-            bar.style.visibility = '';
+        if (!bar) return;
+        // Remove previous close button if any
+        const prevClose = bar.querySelector('.status-bar__close');
+        if (prevClose) prevClose.remove();
+        // Reset ARIA
+        bar.removeAttribute('role');
+        bar.setAttribute('aria-live', 'polite');
+        // Icon selection
+        let iconHTML = '';
+        switch (type) {
+            case 'search':
+                iconHTML = '<span class="status-bar__icon" aria-hidden="true">🔍</span>';
+                break;
+            case 'success':
+                iconHTML = '<span class="status-bar__icon" aria-hidden="true">✅</span>';
+                break;
+            case 'error':
+                iconHTML = '<span class="status-bar__icon" aria-hidden="true">❌</span>';
+                bar.setAttribute('role', 'alert');
+                bar.setAttribute('aria-live', 'assertive');
+                break;
+            case 'loading':
+                iconHTML = '<span class="spinner" aria-hidden="true"></span>';
+                break;
+            case 'info':
+            default:
+                iconHTML = '<span class="status-bar__icon" aria-hidden="true">ℹ️</span>';
+        }
+        bar.innerHTML = iconHTML + '<span class="status-bar__msg">' + message + '</span>';
+        bar.classList.add('chat-app__status-bar--active');
+        bar.style.visibility = '';
+        // Dismiss button for non-loading, non-error
+        const dismissible = options.dismissible !== false && (type === 'info' || type === 'success');
+        if (dismissible) {
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'status-bar__close';
+            closeBtn.setAttribute('aria-label', 'Close status message');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = clearStatus;
+            bar.appendChild(closeBtn);
+        }
+        // Auto-hide for info/success
+        if ((type === 'info' || type === 'success') && options.autoHide !== false) {
+            setTimeout(() => {
+                if (bar.classList.contains('chat-app__status-bar--active')) clearStatus();
+            }, options.duration || 3000);
         }
     }
 
     function clearStatus() {
         const bar = document.getElementById('status-bar');
         if (bar) {
-            bar.textContent = '';
+            bar.innerHTML = '';
             bar.classList.remove('chat-app__status-bar--active');
+            bar.removeAttribute('role');
+            bar.setAttribute('aria-live', 'polite');
             bar.style.visibility = '';
         }
     }
 
-    // Spinner for progress feedback
+    // Spinner for progress feedback (alias for showStatus w/ loading)
     function showSpinner(message) {
-        const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message}`;
-            bar.classList.add('chat-app__status-bar--active');
-            bar.style.visibility = '';
-        }
+        showStatus(message, 'loading', { dismissible: false, autoHide: false });
     }
-    function hideSpinner() {
-        const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.innerHTML = '';
-            bar.classList.remove('chat-app__status-bar--active');
-            bar.style.visibility = '';
-        }
-    }
+    function hideSpinner() { clearStatus(); }
 
     /**
      * Shows an empty state message in the chat window
@@ -353,21 +390,7 @@ const UIController = (function() {
      * Show error feedback in the status bar (with ARIA live region)
      */
     function showError(message) {
-        const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.textContent = message;
-            bar.classList.add('chat-app__status-bar--active');
-            bar.setAttribute('role', 'alert');
-            bar.setAttribute('aria-live', 'assertive');
-            bar.style.visibility = '';
-            setTimeout(() => {
-                bar.textContent = '';
-                bar.classList.remove('chat-app__status-bar--active');
-                bar.removeAttribute('role');
-                bar.removeAttribute('aria-live');
-                bar.style.visibility = '';
-            }, 3000);
-        }
+        showStatus(message, 'error', { dismissible: false, autoHide: true, duration: 3000 });
     }
 
     // Helper: Format message content (code blocks and CoT reasoning)
