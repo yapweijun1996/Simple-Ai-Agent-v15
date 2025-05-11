@@ -119,6 +119,9 @@ Begin Reasoning Now:
                     debugLog(`Web search results for query [${query}]:`, results);
                 } catch (err) {
                     UIController.hideSpinner();
+                    if (err && err.message && err.message === 'All proxies failed') {
+                        UIController.showError('Could not fetch page due to network/proxy error. Please try again later.');
+                    }
                     UIController.addMessage('ai', `Web search failed for "${query}": ${err.message}`);
                     state.chatHistory.push({ role: 'assistant', content: `Web search failed for "${query}": ${err.message}` });
                     continue;
@@ -170,6 +173,9 @@ Begin Reasoning Now:
                 // (Manual summarization removed: summarization now only happens in auto-read workflow)
             } catch (err) {
                 UIController.hideSpinner();
+                if (err && err.message && err.message === 'All proxies failed') {
+                    UIController.showError('Could not fetch page due to network/proxy error. Please try again later.');
+                }
                 UIController.addMessage('ai', `Read URL failed: ${err.message}`);
                 state.chatHistory.push({ role: 'assistant', content: `Read URL failed: ${err.message}` });
             }
