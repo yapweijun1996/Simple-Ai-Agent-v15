@@ -68,18 +68,47 @@ Begin Reasoning Now:
             }
             const engine = args.engine || 'duckduckgo';
             const userQuestion = state.originalUserQuestion || args.query;
-            let queriesTried = [args.query];
+            let queriesToTry = [args.query];
+            let aiSuggestedQueries = [];
+            // Ask AI for 2 alternative queries
+            try {
+                const selectedModel = SettingsController.getSettings().selectedModel;
+                let aiReply = '';
+                const prompt = `Given the user question: "${userQuestion}", suggest 2 alternative search queries that are different in wording or focus, to maximize the chance of finding relevant information. Reply with each query on a new line.`;
+                if (selectedModel.startsWith('gpt')) {
+                    const res = await ApiService.sendOpenAIRequest(selectedModel, [
+                        { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
+                        { role: 'user', content: prompt }
+                    ]);
+                    aiReply = res.choices[0].message.content.trim();
+                } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
+                    const session = ApiService.createGeminiSession(selectedModel);
+                    const chatHistory = [
+                        { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
+                        { role: 'user', content: prompt }
+                    ];
+                    const result = await session.sendMessage(prompt, chatHistory);
+                    const candidate = result.candidates[0];
+                    if (candidate.content.parts) {
+                        aiReply = candidate.content.parts.map(p => p.text).join(' ').trim();
+                    } else if (candidate.content.text) {
+                        aiReply = candidate.content.text.trim();
+                    }
+                }
+                aiSuggestedQueries = aiReply.split('\n').map(q => q.trim()).filter(q => q && !queriesToTry.includes(q));
+                queriesToTry = queriesToTry.concat(aiSuggestedQueries);
+                debugLog('AI suggested alternative queries:', aiSuggestedQueries);
+            } catch (err) {
+                debugLog('Error getting alternative queries from AI:', err);
+            }
             let allResults = [];
-            let lastResults = [];
-            let attempts = 0;
-            const MAX_ATTEMPTS = 3;
-            while (attempts < MAX_ATTEMPTS) {
-                UIController.showSpinner(`Searching (${engine}) for "${queriesTried[attempts]}"...`);
-                UIController.showStatus(`Searching (${engine}) for "${queriesTried[attempts]}"...`);
+            for (const query of queriesToTry) {
+                UIController.showSpinner(`Searching (${engine}) for "${query}"...`);
+                UIController.showStatus(`Searching (${engine}) for "${query}"...`);
                 let results = [];
                 try {
                     const streamed = [];
-                    results = await ToolsService.webSearch(queriesTried[attempts], (result) => {
+                    results = await ToolsService.webSearch(query, (result) => {
                         streamed.push(result);
                         // Pass highlight flag if this index is in highlightedResultIndices
                         const idx = streamed.length - 1;
@@ -87,59 +116,19 @@ Begin Reasoning Now:
                             processToolCall({ tool: 'read_url', arguments: { url, start: 0, length: 1122 } });
                         }, state.highlightedResultIndices.has(idx));
                     }, engine);
-                    debugLog(`Web search results for query [${queriesTried[attempts]}]:`, results);
+                    debugLog(`Web search results for query [${query}]:`, results);
                 } catch (err) {
                     UIController.hideSpinner();
-                    UIController.addMessage('ai', `Web search failed: ${err.message}`);
-                    state.chatHistory.push({ role: 'assistant', content: `Web search failed: ${err.message}` });
-                    break;
+                    UIController.addMessage('ai', `Web search failed for "${query}": ${err.message}`);
+                    state.chatHistory.push({ role: 'assistant', content: `Web search failed for "${query}": ${err.message}` });
+                    continue;
                 }
                 allResults = allResults.concat(results);
-                lastResults = results;
-                // If good results, break
-                if (results.length >= 3 || attempts === MAX_ATTEMPTS - 1) break;
-                // Ask AI for a better query
-                let betterQuery = null;
-                try {
-                    const selectedModel = SettingsController.getSettings().selectedModel;
-                    let aiReply = '';
-                    const prompt = `The initial web search for the user question did not yield enough relevant results.\n\nUser question: ${userQuestion}\nInitial query: ${queriesTried[attempts]}\nSearch results (titles and snippets):\n${results.map((r, i) => `${i+1}. ${r.title} - ${r.snippet}`).join('\n')}\n\nSuggest a better search query to find more relevant information. Reply with only the improved query, or repeat the previous query if no better query is possible.`;
-                    if (selectedModel.startsWith('gpt')) {
-                        const res = await ApiService.sendOpenAIRequest(selectedModel, [
-                            { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
-                            { role: 'user', content: prompt }
-                        ]);
-                        aiReply = res.choices[0].message.content.trim();
-                    } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
-                        const session = ApiService.createGeminiSession(selectedModel);
-                        const chatHistory = [
-                            { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
-                            { role: 'user', content: prompt }
-                        ];
-                        const result = await session.sendMessage(prompt, chatHistory);
-                        const candidate = result.candidates[0];
-                        if (candidate.content.parts) {
-                            aiReply = candidate.content.parts.map(p => p.text).join(' ').trim();
-                        } else if (candidate.content.text) {
-                            aiReply = candidate.content.text.trim();
-                        }
-                    }
-                    debugLog('AI suggested improved query:', aiReply);
-                    if (aiReply && !queriesTried.includes(aiReply)) {
-                        queriesTried.push(aiReply);
-                    } else {
-                        break; // No better query or repeated, stop
-                    }
-                } catch (err) {
-                    debugLog('Error getting improved query from AI:', err);
-                    break;
-                }
-                attempts++;
             }
             UIController.hideSpinner();
             UIController.clearStatus();
             if (!allResults.length) {
-                UIController.addMessage('ai', `No search results found for "${args.query}" after ${attempts+1} attempts.`);
+                UIController.addMessage('ai', `No search results found for "${args.query}" after trying multiple queries.`);
             }
             // Remove duplicate results by URL
             const uniqueResults = [];
