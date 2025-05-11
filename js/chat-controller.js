@@ -74,7 +74,8 @@ Begin Reasoning Now:
             try {
                 const selectedModel = SettingsController.getSettings().selectedModel;
                 let aiReply = '';
-                const prompt = `Given the user question: "${userQuestion}", suggest 2 alternative search queries that are different in wording or focus, to maximize the chance of finding relevant information. Reply with each query on a new line.`;
+                // Improved prompt with examples and explicit instructions
+                const prompt = `Given the user question: "${userQuestion}", suggest 2 alternative web search queries that are:\n- Different in wording, focus, or approach (not just minor rewordings)\n- Likely to retrieve different or complementary information\n- Use synonyms, related topics, or different angles if possible\n\nFor each, reply with the query on a new line. Avoid trivial changes.\n\nExample:\nUser question: \"What are the health benefits of green tea?\"\nGood alternatives:\n- Scientific studies on green tea and health\n- Green tea antioxidants effects on the body\nBad alternatives:\n- What are the health benefits of green tea? (identical)\n- Green tea health benefits (trivial rewording)`;
                 if (selectedModel.startsWith('gpt')) {
                     const res = await ApiService.sendOpenAIRequest(selectedModel, [
                         { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
@@ -95,9 +96,30 @@ Begin Reasoning Now:
                         aiReply = candidate.content.text.trim();
                     }
                 }
+                // Filter out suggestions that are too similar to the original or to each other
                 aiSuggestedQueries = aiReply.split('\n').map(q => q.trim()).filter(q => q && !queriesToTry.includes(q));
+                // Use Levenshtein distance and length ratio to filter
+                const minDistance = 5; // Minimum edit distance to consider as different
+                const minLengthRatio = 0.7; // At least 70% different in length
+                aiSuggestedQueries = aiSuggestedQueries.filter(q => {
+                    const dist = Utils.levenshtein(q.toLowerCase(), args.query.toLowerCase());
+                    const lenRatio = Math.min(q.length, args.query.length) / Math.max(q.length, args.query.length);
+                    return dist >= minDistance || lenRatio < minLengthRatio;
+                });
+                // Remove near-duplicates among suggestions
+                const uniqueSuggestions = [];
+                aiSuggestedQueries.forEach(q => {
+                    if (!uniqueSuggestions.some(uq => {
+                        const dist = Utils.levenshtein(q.toLowerCase(), uq.toLowerCase());
+                        const lenRatio = Math.min(q.length, uq.length) / Math.max(q.length, uq.length);
+                        return dist < minDistance && lenRatio >= minLengthRatio;
+                    })) {
+                        uniqueSuggestions.push(q);
+                    }
+                });
+                aiSuggestedQueries = uniqueSuggestions;
                 queriesToTry = queriesToTry.concat(aiSuggestedQueries);
-                debugLog('AI suggested alternative queries:', aiSuggestedQueries);
+                debugLog('AI suggested alternative queries (filtered):', aiSuggestedQueries);
             } catch (err) {
                 debugLog('Error getting alternative queries from AI:', err);
             }
