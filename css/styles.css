@@ -490,7 +490,7 @@ body:not(.light-mode) .chat-app__message.ai-message {
 /* Status Bar for AI status messages */
 .chat-app__status-bar {
     position: fixed;
-    bottom: 58px;
+    bottom: 70px;
     left: 50%;
     transform: translateX(-50%);
     width: calc(100% - 32px);
