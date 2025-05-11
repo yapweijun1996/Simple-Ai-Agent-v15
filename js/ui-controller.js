@@ -294,10 +294,10 @@ const UIController = (function() {
     }
 
     /**
-     * Shows a status message in the status bar with optional type and auto-hide
+     * Shows a status message in the status bar (plain text, no icon, no spinner)
      * @param {string} message - The status message
-     * @param {string} [type] - Type: 'info', 'search', 'success', 'error', 'loading' (default: 'info')
-     * @param {Object} [options] - { autoHide: boolean, duration: ms, dismissible: boolean }
+     * @param {string} [type] - Ignored, always plain text
+     * @param {Object} [options] - Ignored
      */
     function showStatus(message, type = 'info', options = {}) {
         const bar = document.getElementById('status-bar');
@@ -308,52 +308,16 @@ const UIController = (function() {
         // Reset ARIA
         bar.removeAttribute('role');
         bar.setAttribute('aria-live', 'polite');
-        // Icon selection
-        let iconHTML = '';
-        switch (type) {
-            case 'search':
-                iconHTML = '<span class="status-bar__icon" aria-hidden="true">🔍</span>';
-                break;
-            case 'success':
-                iconHTML = '<span class="status-bar__icon" aria-hidden="true">✅</span>';
-                break;
-            case 'error':
-                iconHTML = '<span class="status-bar__icon" aria-hidden="true">❌</span>';
-                bar.setAttribute('role', 'alert');
-                bar.setAttribute('aria-live', 'assertive');
-                break;
-            case 'loading':
-                iconHTML = '<span class="spinner" aria-hidden="true"></span>';
-                break;
-            case 'info':
-            default:
-                iconHTML = '<span class="status-bar__icon" aria-hidden="true">ℹ️</span>';
-        }
-        bar.innerHTML = iconHTML + '<span class="status-bar__msg">' + message + '</span>';
+        // Only show plain text
+        bar.textContent = message;
         bar.classList.add('chat-app__status-bar--active');
         bar.style.visibility = '';
-        // Dismiss button for non-loading, non-error
-        const dismissible = options.dismissible !== false && (type === 'info' || type === 'success');
-        if (dismissible) {
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'status-bar__close';
-            closeBtn.setAttribute('aria-label', 'Close status message');
-            closeBtn.innerHTML = '&times;';
-            closeBtn.onclick = clearStatus;
-            bar.appendChild(closeBtn);
-        }
-        // Auto-hide for info/success
-        if ((type === 'info' || type === 'success') && options.autoHide !== false) {
-            setTimeout(() => {
-                if (bar.classList.contains('chat-app__status-bar--active')) clearStatus();
-            }, options.duration || 3000);
-        }
     }
 
     function clearStatus() {
         const bar = document.getElementById('status-bar');
         if (bar) {
-            bar.innerHTML = '';
+            bar.textContent = '';
             bar.classList.remove('chat-app__status-bar--active');
             bar.removeAttribute('role');
             bar.setAttribute('aria-live', 'polite');
@@ -361,9 +325,9 @@ const UIController = (function() {
         }
     }
 
-    // Spinner for progress feedback (alias for showStatus w/ loading)
+    // Spinner for progress feedback (just show plain text)
     function showSpinner(message) {
-        showStatus(message, 'loading', { dismissible: false, autoHide: false });
+        showStatus(message);
     }
     function hideSpinner() { clearStatus(); }
 
@@ -387,10 +351,10 @@ const UIController = (function() {
     }
 
     /**
-     * Show error feedback in the status bar (with ARIA live region)
+     * Show error feedback in the status bar (plain text only)
      */
     function showError(message) {
-        showStatus(message, 'error', { dismissible: false, autoHide: true, duration: 3000 });
+        showStatus(message);
     }
 
     // Helper: Format message content (code blocks and CoT reasoning)
