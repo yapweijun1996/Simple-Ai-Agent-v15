@@ -399,7 +399,19 @@ Answer: [your final, concise answer based on the reasoning above]`;
             }
         } catch (error) {
             console.error('Error sending message:', error);
-            UIController.addMessage('ai', 'Error: ' + error.message);
+            let userMsg = '';
+            if (error && error.message && (
+                error.message.includes('Failed to fetch') ||
+                error.message.includes('Service Unavailable') ||
+                error.message.includes('503') ||
+                error.message.includes('403')
+            )) {
+                userMsg = 'The Gemini API is currently unavailable or blocked. Please try again later.';
+                UIController.showStatus(userMsg);
+            } else {
+                userMsg = 'Error: ' + (error && error.message ? error.message : error);
+            }
+            UIController.addMessage('ai', userMsg);
         } finally {
             Utils.updateTokenDisplay(state.totalTokens);
             UIController.clearStatus();
