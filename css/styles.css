@@ -171,13 +171,19 @@ body:not(.light-mode) .chat-app__message.user-message {
     border-radius: 18px 18px 18px 4px;
     color: #22334a;
     box-shadow: 0 2px 12px #4f8cff22;
-    border: 1px solid #b3d4fc;
+    border: 1.5px solid #4f8cff;
+    border-left: 6px solid #4f8cff;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    animation: fadeInMessage 0.5s cubic-bezier(0.4,0,0.2,1);
 }
 
 body:not(.light-mode) .chat-app__message.ai-message {
     background: linear-gradient(135deg, var(--ai-msg-bg) 80%, #23272e 100%);
     color: #eaf3ff;
-    border: 1px solid #23272e;
+    border: 1.5px solid #4f8cff44;
+    border-left: 6px solid #4f8cff;
     box-shadow: 0 2px 12px #4f8cff22;
 }
 
@@ -189,7 +195,7 @@ body:not(.light-mode) .chat-app__message.ai-message {
     word-break: break-word;
     font-size: 1.08rem;
     line-height: 1.7;
-    padding: 18px 18px 1.5em 18px;
+    padding: 8px 0 1.5em 0;
     max-width: 100%;
     box-sizing: border-box;
     background: none;
@@ -674,29 +680,21 @@ body.dark-mode .chat-app__status-bar {
 }
 
 .chat-app__timestamp {
-    font-size: 0.75rem;
-    color: #aaa;
     display: block;
-    position: static;
-    background: none;
-    padding: 0;
-    border-radius: 0;
-    box-shadow: none;
-    text-align: right;
-    white-space: nowrap;
-    opacity: 0.7;
-    margin-top: -0.8em;
-    margin-bottom: 0.2em;
-    align-self: flex-end;
+    font-size: 0.92em;
+    color: #7a8ca3;
+    margin-top: 2px;
+    margin-left: 54px;
+    letter-spacing: 0.02em;
+    opacity: 0.85;
 }
 body:not(.light-mode) .chat-app__timestamp {
-    background: none;
-    color: #b0b0b0;
+    color: #b3d4fc;
 }
 
 @keyframes fadeInMessage {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
 }
 
 body.dark-mode, body.dark-mode .chat-app {
@@ -1211,7 +1209,24 @@ body:not(.light-mode) .search-result-snippet {
   background: #cce5ff;
 }
 .ai-message .avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 38px;
+  width: 38px;
+  height: 38px;
+  font-size: 1.7em;
   background: #e0e7ef;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px #4f8cff22;
+  margin-right: 2px;
+  margin-top: 2px;
+  border: 2px solid #b3d4fc;
+}
+body:not(.light-mode) .ai-message .avatar {
+  background: #23272e;
+  border: 2px solid #4f8cff44;
 }
 
 /* Thinking dots animation */
