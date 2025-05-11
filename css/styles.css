@@ -486,7 +486,6 @@ body:not(.light-mode) .chat-app__message.ai-message {
 
 @media (max-width: 360px) {
     .chat-app__controls {
-        transform: unset;
         flex-wrap: wrap;
         padding: var(--space-sm);
     }
@@ -1267,6 +1266,7 @@ body:not(.light-mode) .search-result-snippet {
 /* Sticky chat controls on mobile */
 @media (max-width: 600px) {
   #controls {
+    transform: unset;
     position: fixed;
     left: 0;
     bottom: 0;
