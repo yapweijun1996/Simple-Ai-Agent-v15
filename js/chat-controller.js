@@ -308,68 +308,116 @@ Thinking: [detailed reasoning process, exploring different angles and considerat
 Answer: [your final, concise answer based on the reasoning above]`;
     }
 
-    // 2. Merge processCoTResponse and processPartialCoTResponse into parseCoTResponse
+    /**
+     * Robustly parses CoT response for multiple steps and malformed formats
+     * @param {string} response - The AI response
+     * @param {boolean} isPartial - If this is a partial/streamed response
+     * @returns {Object} - { thinkingSteps: [], answer: string, hasStructuredResponse, partial, error }
+     */
     function parseCoTResponse(response, isPartial = false) {
-        const thinkingMatch = response.match(/Thinking:(.*?)(?=Answer:|$)/s);
-        const answerMatch = response.match(/Answer:(.*?)$/s);
-        if (thinkingMatch && answerMatch) {
-            state.lastThinkingContent = thinkingMatch[1].trim();
-            state.lastAnswerContent = answerMatch[1].trim();
-            return {
-                thinking: state.lastThinkingContent,
-                answer: state.lastAnswerContent,
-                hasStructuredResponse: true,
-                partial: isPartial,
-                stage: isPartial && !answerMatch[1].trim() ? 'thinking' : undefined
-            };
-        } else if (response.startsWith('Thinking:') && !response.includes('Answer:')) {
-            state.lastThinkingContent = response.replace(/^Thinking:/, '').trim();
-            return {
-                thinking: state.lastThinkingContent,
-                answer: state.lastAnswerContent,
-                hasStructuredResponse: true,
-                partial: true,
-                stage: 'thinking'
-            };
-        } else if (response.includes('Thinking:') && !thinkingMatch) {
-            const thinking = response.replace(/^.*?Thinking:/s, 'Thinking:');
-            return {
-                thinking: thinking.replace(/^Thinking:/, '').trim(),
-                answer: '',
-                hasStructuredResponse: false,
-                partial: true
-            };
+        // Support multiple 'Thinking:' and 'Answer:' blocks
+        const thinkingSteps = [];
+        let answer = '';
+        let error = null;
+        let hasStructuredResponse = false;
+        // Regex to match all 'Thinking:' and 'Answer:' blocks
+        const regex = /(Thinking:)([\s\S]*?)(?=Thinking:|Answer:|$)|(Answer:)([\s\S]*?)(?=Thinking:|Answer:|$)/g;
+        let match;
+        let foundAnswer = false;
+        while ((match = regex.exec(response)) !== null) {
+            if (match[1] === 'Thinking:') {
+                thinkingSteps.push(match[2].trim());
+                hasStructuredResponse = true;
+            } else if (match[3] === 'Answer:') {
+                answer = match[4].trim();
+                foundAnswer = true;
+                hasStructuredResponse = true;
+            }
         }
+        // Fallback: if no blocks found, treat as unstructured
+        if (!hasStructuredResponse) {
+            if (response.trim().length === 0) {
+                error = 'Empty response from AI.';
+            } else {
+                answer = response.trim();
+                error = 'AI response did not follow the expected format.';
+            }
+        } else if (!foundAnswer && thinkingSteps.length > 0) {
+            error = 'AI response missing final Answer.';
+        }
+        // Store last reasoning and answer for compatibility
+        state.lastThinkingContent = thinkingSteps.join('\n---\n');
+        state.lastAnswerContent = answer;
+        // Return all steps and error if any
         return {
-            thinking: '',
-            answer: response,
-            hasStructuredResponse: false
+            thinkingSteps,
+            answer,
+            hasStructuredResponse,
+            partial: isPartial,
+            error,
+            stage: isPartial && !foundAnswer ? 'thinking' : undefined
         };
     }
 
     /**
+     * Helper to summarize parsing issues for UI feedback
+     * @param {Object} parsed - Output of parseCoTResponse
+     * @returns {string|null} - User-friendly error message or null
+     */
+    function getCoTParsingFeedback(parsed) {
+        if (parsed.error) {
+            if (parsed.error === 'Empty response from AI.') {
+                return '⚠️ AI returned an empty response.';
+            } else if (parsed.error === 'AI response did not follow the expected format.') {
+                return '⚠️ AI response did not follow the expected "Thinking: ... Answer: ..." format.';
+            } else if (parsed.error === 'AI response missing final Answer.') {
+                return '⚠️ AI response is missing a final Answer.';
+            } else {
+                return `⚠️ ${parsed.error}`;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Formats the response for display based on settings
-     * @param {Object} processed - The processed response with thinking and answer
+     * @param {Object} processed - The processed response with thinkingSteps and answer
      * @returns {string} - The formatted response for display
      */
     function formatResponseForDisplay(processed) {
-        if (!state.settings.enableCoT || !processed.hasStructuredResponse) {
-            return processed.answer;
+        // Show parsing feedback if present
+        const feedback = getCoTParsingFeedback(processed);
+        let output = '';
+        if (feedback) {
+            output += feedback + '\n';
         }
-
-        // If showThinking is enabled, show both thinking and answer
+        if (!state.settings.enableCoT || !processed.hasStructuredResponse) {
+            output += processed.answer;
+            return output.trim();
+        }
+        // If showThinking is enabled, show all reasoning steps and answer
         if (state.settings.showThinking) {
             if (processed.partial && processed.stage === 'thinking') {
-                return `Thinking: ${processed.thinking}`;
+                // Show all current thinking steps
+                if (processed.thinkingSteps && processed.thinkingSteps.length > 0) {
+                    output += processed.thinkingSteps.map((step, i) => `Step ${i+1}: ${step}`).join('\n---\n');
+                } else {
+                    output += '🤔 Thinking...';
+                }
             } else if (processed.partial) {
-                return processed.thinking; // Just the partial thinking
+                output += processed.thinkingSteps.map((step, i) => `Step ${i+1}: ${step}`).join('\n---\n');
             } else {
-                return `Thinking: ${processed.thinking}\n\nAnswer: ${processed.answer}`;
+                // Show all steps and final answer
+                if (processed.thinkingSteps && processed.thinkingSteps.length > 0) {
+                    output += processed.thinkingSteps.map((step, i) => `Step ${i+1}: ${step}`).join('\n---\n') + '\n\n';
+                }
+                output += `Answer: ${processed.answer}`;
             }
         } else {
             // Otherwise just show the answer (or thinking indicator if answer isn't ready)
-            return processed.answer || '🤔 Thinking...';
+            output += processed.answer || '🤔 Thinking...';
         }
+        return output.trim();
     }
 
     // Helper: Validate user input

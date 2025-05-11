@@ -361,12 +361,32 @@ const UIController = (function() {
     function formatMessageContent(text) {
         // Escape HTML first
         let escapedText = escapeHtml(text);
-        // Replace newlines with <br>
-        let formattedText = escapedText.replace(/\n/g, '<br>');
-        // Highlight CoT reasoning if present
-        if (text.includes('Thinking:') && text.includes('Answer:')) {
-            const thinkingMatch = text.match(/Thinking:(.*?)(?=Answer:|$)/s);
-            const answerMatch = text.match(/Answer:(.*?)$/s);
+        // Show warning if present
+        let warningHtml = '';
+        if (escapedText.startsWith('⚠️')) {
+            const lines = escapedText.split('<br>');
+            warningHtml = `<div class="cot-warning">${lines[0]}</div>`;
+            escapedText = lines.slice(1).join('<br>');
+        }
+        // Format multi-step reasoning (Step 1:, Step 2:, ...)
+        let formattedText = escapedText;
+        const stepRegex = /Step (\d+): ([^\n]+)/g;
+        let steps = [];
+        let match;
+        while ((match = stepRegex.exec(escapedText)) !== null) {
+            steps.push(`<li><strong>Step ${match[1]}:</strong> ${escapeHtml(match[2])}</li>`);
+        }
+        if (steps.length > 0) {
+            formattedText = `<ol class="cot-steps">${steps.join('')}</ol>`;
+            // Show answer if present after steps
+            const answerMatch = escapedText.match(/Answer:([\s\S]*)$/);
+            if (answerMatch) {
+                formattedText += `<div class="answer-section"><strong>Answer:</strong><br>${escapeHtml(answerMatch[1].trim()).replace(/\n/g, '<br>')}</div>`;
+            }
+        } else if (escapedText.includes('Thinking:') && escapedText.includes('Answer:')) {
+            // Fallback: highlight CoT reasoning if present
+            const thinkingMatch = escapedText.match(/Thinking:(.*?)(?=Answer:|$)/s);
+            const answerMatch = escapedText.match(/Answer:(.*?)$/s);
             if (thinkingMatch && answerMatch) {
                 const thinkingContent = escapeHtml(thinkingMatch[1].trim());
                 const answerContent = escapeHtml(answerMatch[1].trim());
@@ -377,7 +397,7 @@ const UIController = (function() {
         if (text.includes('```')) {
             formattedText = formatCodeBlocks(text);
         }
-        return formattedText;
+        return warningHtml + formattedText;
     }
 
     // Helper: Set thinking indicator

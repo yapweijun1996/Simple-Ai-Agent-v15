@@ -1495,4 +1495,26 @@ body:not(.light-mode) .chat-app__message-content ol ol {
         font-size: 0.95rem;
         padding: 3px 6px;
     }
+}
+
+/* Chain of Thought warning and steps styles */
+.cot-warning {
+  color: #b30000;
+  background: #fff3cd;
+  border-left: 4px solid #b30000;
+  padding: 0.5em 1em;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+  border-radius: 4px;
+  font-size: 1em;
+}
+.cot-steps {
+  margin: 0.5em 0 1em 1.5em;
+  padding: 0;
+  list-style-type: decimal;
+  font-size: 1em;
+}
+.cot-steps li {
+  margin-bottom: 0.5em;
+  line-height: 1.5;
 } 
