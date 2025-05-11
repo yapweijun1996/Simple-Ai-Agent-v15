@@ -370,28 +370,16 @@ const UIController = (function() {
         }
         // Format multi-step reasoning (Step 1:, Step 2:, ...)
         let formattedText = escapedText;
-        const stepRegex = /Step (\d+): ([^\n]+)/g;
-        let steps = [];
-        let match;
-        while ((match = stepRegex.exec(escapedText)) !== null) {
-            steps.push(`<li><strong>Step ${match[1]}:</strong> ${escapeHtml(match[2])}</li>`);
-        }
-        if (steps.length > 0) {
-            formattedText = `<ol class="cot-steps">${steps.join('')}</ol>`;
-            // Show answer if present after steps
-            const answerMatch = escapedText.match(/(Answer:|Conclusion:)([\s\S]*)$/);
-            if (answerMatch) {
-                formattedText += `<div class="answer-section"><strong>${escapeHtml(answerMatch[1])}</strong><br>${escapeHtml(answerMatch[2].trim()).replace(/\n/g, '<br>')}</div>`;
+        // New: check for structured steps array in processed response
+        if (typeof text === 'object' && text.steps && Array.isArray(text.steps) && text.steps.length > 0) {
+            // Render steps as ordered list with type and summary
+            formattedText = '<ol class="cot-steps">' + text.steps.map(step =>
+                `<li><span class="cot-step-number">Step ${step.number}</span> <span class="cot-step-type">[${step.type}]</span>: ${escapeHtml(step.text)}<br><span class="cot-step-summary"><em>Summary:</em> ${escapeHtml(step.summary)}</span></li>`
+            ).join('') + '</ol>';
+            if (text.answer) {
+                formattedText += `<div class="answer-section"><strong>Final Answer:</strong><br>${escapeHtml(text.answer).replace(/\n/g, '<br>')}</div>`;
             }
-        } else if ((escapedText.includes('Thinking:') || escapedText.includes('Reasoning:')) && (escapedText.includes('Answer:') || escapedText.includes('Conclusion:'))) {
-            // Fallback: highlight CoT reasoning if present
-            const thinkingMatch = escapedText.match(/(Thinking:|Reasoning:)(.*?)(?=Answer:|Conclusion:|$)/s);
-            const answerMatch = escapedText.match(/(Answer:|Conclusion:)(.*?)$/s);
-            if (thinkingMatch && answerMatch) {
-                const thinkingContent = escapeHtml(thinkingMatch[2].trim());
-                const answerContent = escapeHtml(answerMatch[2].trim());
-                formattedText = `<div class="thinking-section"><strong>${escapeHtml(thinkingMatch[1])}</strong><br>${thinkingContent.replace(/\n/g, '<br>')}</div>\n<div class="answer-section"><strong>${escapeHtml(answerMatch[1])}</strong><br>${answerContent.replace(/\n/g, '<br>')}</div>`;
-            }
+            return warningHtml + formattedText;
         }
         // Format code blocks
         if (text.includes('```')) {

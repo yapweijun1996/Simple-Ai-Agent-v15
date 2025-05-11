@@ -303,57 +303,93 @@ If you understand, follow these instructions for every relevant question. Do NOT
      * @returns {string} - The CoT enhanced message
      */
     function enhanceWithCoT(message) {
-        return `${message}\n\nI'd like you to use Chain of Thought reasoning. Please think step-by-step before providing your final answer. Format your response like this:\nThinking: [detailed reasoning process, exploring different angles and considerations]\nAnswer: [your final, concise answer based on the reasoning above]\n\nYou may also use 'Reasoning:' instead of 'Thinking:' and 'Conclusion:' instead of 'Answer:' if you prefer. But always separate your reasoning and your final answer clearly.`;
+        const detailLevel = (state.settings && state.settings.reasoningDetailLevel) || 'standard';
+        let detailInstruction = '';
+        if (detailLevel === 'brief') {
+            detailInstruction = 'Be as concise as possible, only include the most essential steps.';
+        } else if (detailLevel === 'detailed') {
+            detailInstruction = 'Be very thorough, include all relevant facts, checks, and possible alternatives.';
+        } else {
+            detailInstruction = 'Provide a clear, step-by-step explanation.';
+        }
+        return `${message}\n\nPlease answer using step-by-step reasoning. For each step, label it as [Fact], [Assumption], [Action], or [Decision]. After each step, provide a one-line summary of progress. At the end, give a final answer, clearly separated.\n${detailInstruction}\n\nFormat:\nStep 1 [Fact]: ...\nSummary: ...\nStep 2 [Action]: ...\nSummary: ...\n...\nFinal Answer: ...`;
     }
 
     /**
      * Robustly parses CoT response for multiple steps and malformed formats
      * @param {string} response - The AI response
      * @param {boolean} isPartial - If this is a partial/streamed response
-     * @returns {Object} - { thinkingSteps: [], answer: string, hasStructuredResponse, partial, error }
+     * @returns {Object} - { steps: [], answer: string, hasStructuredResponse, partial, error }
      */
     function parseCoTResponse(response, isPartial = false) {
-        // Support multiple reasoning and answer blocks (Thinking/Reasoning, Answer/Conclusion)
-        const thinkingSteps = [];
-        let answer = '';
-        let error = null;
-        let hasStructuredResponse = false;
-        // Regex to match all reasoning and answer blocks
-        const regex = /(Thinking:|Reasoning:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)|(Answer:|Conclusion:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)/g;
+        // New format: Step N [Type]: ...\nSummary: ...
+        const stepRegex = /Step (\d+) \[(Fact|Assumption|Action|Decision)\]: ([^\n]+)\nSummary: ([^\n]+)/g;
+        const steps = [];
         let match;
-        let foundAnswer = false;
-        while ((match = regex.exec(response)) !== null) {
-            if (match[1] === 'Thinking:' || match[1] === 'Reasoning:') {
-                thinkingSteps.push(match[2].trim());
-                hasStructuredResponse = true;
-            } else if (match[3] === 'Answer:' || match[3] === 'Conclusion:') {
-                answer = match[4].trim();
-                foundAnswer = true;
-                hasStructuredResponse = true;
-            }
+        while ((match = stepRegex.exec(response)) !== null) {
+            steps.push({
+                number: parseInt(match[1], 10),
+                type: match[2],
+                text: match[3].trim(),
+                summary: match[4].trim()
+            });
         }
-        // Fallback: if no blocks found, treat as unstructured
-        if (!hasStructuredResponse) {
-            if (response.trim().length === 0) {
-                error = 'Empty response from AI.';
-            } else {
-                answer = response.trim();
-                error = 'AI response did not follow the expected format.';
+        // Extract final answer
+        let answer = '';
+        const answerMatch = response.match(/Final Answer:([\s\S]*)$/);
+        if (answerMatch) {
+            answer = answerMatch[1].trim();
+        }
+        // Fallback: if no steps found, try old format
+        if (steps.length === 0) {
+            const thinkingSteps = [];
+            let fallbackAnswer = '';
+            let error = null;
+            let hasStructuredResponse = false;
+            const regex = /(Thinking:|Reasoning:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)|(Answer:|Conclusion:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)/g;
+            let m;
+            let foundAnswer = false;
+            while ((m = regex.exec(response)) !== null) {
+                if (m[1] === 'Thinking:' || m[1] === 'Reasoning:') {
+                    thinkingSteps.push(m[2].trim());
+                    hasStructuredResponse = true;
+                } else if (m[3] === 'Answer:' || m[3] === 'Conclusion:') {
+                    fallbackAnswer = m[4].trim();
+                    foundAnswer = true;
+                    hasStructuredResponse = true;
+                }
             }
-        } else if (!foundAnswer && thinkingSteps.length > 0) {
-            error = 'AI response missing final Answer.';
+            if (!hasStructuredResponse) {
+                if (response.trim().length === 0) {
+                    error = 'Empty response from AI.';
+                } else {
+                    fallbackAnswer = response.trim();
+                    error = 'AI response did not follow the expected format.';
+                }
+            } else if (!foundAnswer && thinkingSteps.length > 0) {
+                error = 'AI response missing final Answer.';
+            }
+            state.lastThinkingContent = thinkingSteps.join('\n---\n');
+            state.lastAnswerContent = fallbackAnswer;
+            return {
+                steps: [],
+                answer: fallbackAnswer,
+                hasStructuredResponse,
+                partial: isPartial,
+                error,
+                stage: isPartial && !foundAnswer ? 'thinking' : undefined
+            };
         }
         // Store last reasoning and answer for compatibility
-        state.lastThinkingContent = thinkingSteps.join('\n---\n');
+        state.lastThinkingContent = steps.map(s => s.text).join('\n---\n');
         state.lastAnswerContent = answer;
-        // Return all steps and error if any
         return {
-            thinkingSteps,
+            steps,
             answer,
-            hasStructuredResponse,
+            hasStructuredResponse: true,
             partial: isPartial,
-            error,
-            stage: isPartial && !foundAnswer ? 'thinking' : undefined
+            error: null,
+            stage: isPartial && !answer ? 'thinking' : undefined
         };
     }
 
@@ -397,17 +433,17 @@ If you understand, follow these instructions for every relevant question. Do NOT
         if (state.settings.showThinking) {
             if (processed.partial && processed.stage === 'thinking') {
                 // Show all current thinking steps
-                if (processed.thinkingSteps && processed.thinkingSteps.length > 0) {
-                    output += processed.thinkingSteps.map((step, i) => `Step ${i+1}: ${step}`).join('\n---\n');
+                if (processed.steps && processed.steps.length > 0) {
+                    output += processed.steps.map((step, i) => `Step ${i+1}: ${step.text}`).join('\n---\n');
                 } else {
                     output += '🤔 Thinking...';
                 }
             } else if (processed.partial) {
-                output += processed.thinkingSteps.map((step, i) => `Step ${i+1}: ${step}`).join('\n---\n');
+                output += processed.steps.map((step, i) => `Step ${i+1}: ${step.text}`).join('\n---\n');
             } else {
                 // Show all steps and final answer
-                if (processed.thinkingSteps && processed.thinkingSteps.length > 0) {
-                    output += processed.thinkingSteps.map((step, i) => `Step ${i+1}: ${step}`).join('\n---\n') + '\n\n';
+                if (processed.steps && processed.steps.length > 0) {
+                    output += processed.steps.map((step, i) => `Step ${i+1}: ${step.text}`).join('\n---\n') + '\n\n';
                 }
                 output += `Answer: ${processed.answer}`;
             }
