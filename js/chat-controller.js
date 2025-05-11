@@ -534,6 +534,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
                 await processToolCall(toolCall);
                 return;
             }
+            const aiMsgElement = UIController.createEmptyAIMessage();
             if (state.settings.enableCoT) {
                 const processed = parseCoTResponse(textResponse);
                 if (processed.thinking) {
