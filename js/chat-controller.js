@@ -494,8 +494,12 @@ Answer: [your final, concise answer based on the reasoning above]`;
         }
     }
 
-    async function handleNonStreamingResponse({ model, requestFn, onToolCall }) {
+    async function handleNonStreamingResponse({ model, requestFn, onToolCall, aiMsgElement }) {
         UIController.showStatus('Waiting for AI response...');
+        // Ensure aiMsgElement is always defined
+        if (!aiMsgElement) {
+            aiMsgElement = UIController.createEmptyAIMessage();
+        }
         try {
             const result = await requestFn(model, state.chatHistory);
             if (result.error) {
