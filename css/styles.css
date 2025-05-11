@@ -1316,113 +1316,78 @@ body:not(.light-mode) .scroll-to-bottom-btn:hover, body:not(.light-mode) .scroll
   box-shadow: 0 6px 24px #4f8cff55;
 }
 
-/* --- Markdown Table Styling --- */
-.chat-app__message-content table,
-.answer-section table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 10px 0;
-  background: #23272e;
-  color: #eaf3ff;
-  font-size: 0.98rem;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px #0002;
-}
-.chat-app__message-content th,
-.answer-section th {
-  background: #263045;
-  color: #4faaff;
+/* --- Markdown Content Styling for Chat --- */
+.chat-app__message-content h1,
+.chat-app__message-content h2,
+.chat-app__message-content h3 {
+  margin: 1em 0 0.5em 0;
   font-weight: 600;
-  padding: 8px 10px;
-  border-bottom: 1.5px solid #4faaff44;
-  text-align: left;
+  line-height: 1.2;
 }
-.chat-app__message-content td,
-.answer-section td {
-  padding: 8px 10px;
-  border-bottom: 1px solid #2c313a;
-  vertical-align: top;
-}
-.chat-app__message-content tr:last-child td,
-.answer-section tr:last-child td {
-  border-bottom: none;
-}
-.chat-app__message-content th, .chat-app__message-content td,
-.answer-section th, .answer-section td {
-  min-width: 80px;
-}
-@media (max-width: 600px) {
-  .chat-app__message-content table,
-  .answer-section table {
-    display: block;
-    overflow-x: auto;
-    font-size: 0.93rem;
-  }
+.chat-app__message-content h1 { font-size: 1.4em; }
+.chat-app__message-content h2 { font-size: 1.2em; }
+.chat-app__message-content h3 { font-size: 1.1em; }
+
+.chat-app__message-content p {
+  margin: 0.5em 0;
 }
 
-/* --- Thinking & Answer Block Polish --- */
-.thinking-section, .answer-section {
-  box-shadow: 0 2px 8px #0002;
-  transition: background 0.2s, box-shadow 0.2s;
-  margin-bottom: 10px;
-}
-.thinking-section {
-  background: #22334a;
-  border-left: 4px solid #2196F3;
-  color: #b3d4fc;
-}
-.answer-section {
-  background: #1e2d1e;
-  border-left: 4px solid #4CAF50;
-  color: #eaffea;
-}
-
-/* --- Timestamp & Message Bubble Layout --- */
-.chat-app__timestamp {
-  margin-top: 0.3em;
-  margin-bottom: 0.1em;
-  font-size: 0.72rem;
-  opacity: 0.6;
-  text-align: right;
-  align-self: flex-end;
-}
-
-/* --- Message Bubble Padding & Hover --- */
-.chat-app__message {
-  padding: 0 0 6px 0;
-  transition: box-shadow 0.2s, background 0.2s;
-}
-.chat-app__message:hover {
-  box-shadow: 0 6px 24px #4f8cff33, 0 2px 8px #0002;
-  filter: brightness(1.04);
-  background: #232b36;
-}
-
-/* --- Responsive Table Scrollbar --- */
-.chat-app__message-content table::-webkit-scrollbar,
-.answer-section table::-webkit-scrollbar {
-  height: 6px;
-  background: #23272e;
-}
-.chat-app__message-content table::-webkit-scrollbar-thumb,
-.answer-section table::-webkit-scrollbar-thumb {
-  background: #4faaff;
-  border-radius: 4px;
-}
-
-/* Compact markdown lists in AI messages */
 .chat-app__message-content ul,
 .chat-app__message-content ol {
-  margin-block-start: 0.5em;
-  margin-block-end: 0.5em;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
-  padding-left: 1.5em;
-  padding-inline-start: 1.5em;
+  margin: 0.5em 0 0.5em 1.2em;
+  padding-left: 1.2em;
 }
 
 .chat-app__message-content li {
   margin-bottom: 0.2em;
-  line-height: 1.4;
+  line-height: 1.5;
+}
+
+.chat-app__message-content pre,
+.chat-app__message-content code {
+  background: #23272e;
+  color: #eaf3ff;
+  border-radius: 4px;
+  padding: 0.2em 0.5em;
+  font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 0.98em;
+}
+
+.chat-app__message-content pre {
+  padding: 0.7em 1em;
+  overflow-x: auto;
+  margin: 0.7em 0;
+}
+
+.chat-app__message-content blockquote {
+  border-left: 3px solid #4f8cff;
+  background: #f0f7ff;
+  color: #22334a;
+  margin: 0.7em 0;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-style: italic;
+}
+
+.chat-app__message-content a {
+  color: #4f8cff;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.chat-app__message-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.7em 0;
+  background: #23272e;
+  color: #eaf3ff;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.chat-app__message-content th,
+.chat-app__message-content td {
+  border: 1px solid #4f8cff44;
+  padding: 0.5em 0.8em;
+  text-align: left;
 } 
