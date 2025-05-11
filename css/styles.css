@@ -486,6 +486,7 @@ body:not(.light-mode) .chat-app__message.ai-message {
 
 @media (max-width: 360px) {
     .chat-app__controls {
+        transform: unset;
         flex-wrap: wrap;
         padding: var(--space-sm);
     }
