@@ -1236,13 +1236,24 @@ body:not(.light-mode) .search-result-snippet {
 /* Sticky chat controls on mobile */
 @media (max-width: 600px) {
   #controls {
-    position: sticky;
+    position: fixed;
+    left: 0;
     bottom: 0;
-    background: var(--background-color, #fff);
-    z-index: 10;
+    width: 100vw;
+    background: var(--container-bg);
+    z-index: 1100;
     box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+    border-top: 1px solid var(--border-color);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+  .chat-app__window {
+    padding-bottom: 100px !important; /* ensure enough space for footer */
+  }
+}
+
+body:not(.light-mode) #controls {
+  background: var(--container-bg);
+  border-top: 1px solid var(--border-color);
 }
 
 /* --- Scroll to Bottom Button --- */
