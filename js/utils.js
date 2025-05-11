@@ -225,6 +225,8 @@ const Utils = (function() {
             try {
                 const controller = new AbortController();
                 const id = setTimeout(() => controller.abort('timeout'), timeout);
+                // Debug log for fetch arguments
+                console.log('[fetchWithRetry] Attempt', attempt + 1, 'URL:', url, 'Options:', options);
                 const response = await fetch(url, { ...options, signal: controller.signal });
                 clearTimeout(id);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
