@@ -135,19 +135,6 @@ const UIController = (function() {
         // Add fade-in animation
         messageElement.classList.add('fade-in');
 
-        // Show AI avatar/icon if sender is 'ai'
-        const avatarDiv = messageElement.querySelector('.avatar');
-        if (avatarDiv) {
-            if (sender === 'ai') {
-                avatarDiv.style.display = '';
-                avatarDiv.innerHTML = '🤖';
-                avatarDiv.setAttribute('title', 'AI');
-            } else {
-                avatarDiv.style.display = 'none';
-                avatarDiv.innerHTML = '';
-            }
-        }
-
         // Group consecutive messages from the same sender
         const lastMsg = Array.from(chatWindow.children).reverse().find(el => el.classList && el.classList.contains('chat-app__message'));
         if (lastMsg && lastMsg.classList.contains(`${sender}-message`)) {
