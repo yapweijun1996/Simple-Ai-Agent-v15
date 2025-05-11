@@ -1409,4 +1409,20 @@ body:not(.light-mode) .scroll-to-bottom-btn:hover, body:not(.light-mode) .scroll
 .answer-section table::-webkit-scrollbar-thumb {
   background: #4faaff;
   border-radius: 4px;
+}
+
+/* Compact markdown lists in AI messages */
+.chat-app__message-content ul,
+.chat-app__message-content ol {
+  margin-block-start: 0.5em;
+  margin-block-end: 0.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
+  padding-inline-start: 1.5em;
+}
+
+.chat-app__message-content li {
+  margin-bottom: 0.2em;
+  line-height: 1.4;
 } 
