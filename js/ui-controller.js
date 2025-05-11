@@ -416,6 +416,48 @@ const UIController = (function() {
         }
     }
 
+    /**
+     * Adds a search result to the chat window with a 'Read More' button
+     * @param {Object} result - {title, url, snippet}
+     * @param {Function} onReadMore - Callback when 'Read More' is clicked (optional)
+     */
+    function addSearchResult(result, onReadMore) {
+        if (shownUrls.has(result.url)) return;
+        shownUrls.add(result.url);
+        const chatWindow = document.getElementById('chat-window');
+        const article = document.createElement('article');
+        article.className = 'chat-app__message ai-message search-result';
+        // Improved card structure
+        const card = document.createElement('div');
+        card.className = 'search-result-card';
+        // Header with icon and link
+        const header = document.createElement('div');
+        header.className = 'search-result-header';
+        header.innerHTML = `<span class="search-result-icon" aria-hidden="true">🔍</span><a href="${result.url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(result.title)}</a>`;
+        card.appendChild(header);
+        // URL
+        const urlDiv = document.createElement('div');
+        urlDiv.className = 'search-result-url';
+        urlDiv.innerHTML = `<a href="${result.url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(result.url)}</a>`;
+        card.appendChild(urlDiv);
+        // Snippet
+        const snippetDiv = document.createElement('div');
+        snippetDiv.className = 'search-result-snippet';
+        snippetDiv.textContent = result.snippet;
+        card.appendChild(snippetDiv);
+        // Optional: Add 'Read More' button
+        if (typeof onReadMore === 'function') {
+            const readMoreBtn = document.createElement('button');
+            readMoreBtn.className = 'read-more-btn';
+            readMoreBtn.textContent = 'Read More';
+            readMoreBtn.addEventListener('click', () => onReadMore(result));
+            card.appendChild(readMoreBtn);
+        }
+        article.appendChild(card);
+        chatWindow.appendChild(article);
+        article.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
     // Public API
     return {
         init,
