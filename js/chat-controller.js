@@ -711,6 +711,10 @@ Answer: [your final, concise answer based on the reasoning above]`;
             await summarizeSnippets();
         } finally {
             state.autoReadInProgress = false;
+            // Always attempt to synthesize a final answer, even if all snippets failed
+            if (!state.readSnippets.length) {
+                await synthesizeFinalAnswer('');
+            }
         }
     }
 
@@ -777,7 +781,12 @@ Answer: [your final, concise answer based on the reasoning above]`;
     async function summarizeSnippets(snippets = null, round = 1) {
         debugLog('summarizeSnippets', { snippets, round });
         if (!snippets) snippets = state.readSnippets;
-        if (!snippets.length) return;
+        if (!snippets.length) {
+            // No snippets, synthesize a fallback answer
+            UIController.addMessage('ai', 'Sorry, I could not retrieve enough information to answer your question due to network or proxy errors.');
+            await synthesizeFinalAnswer('');
+            return;
+        }
         const selectedModel = SettingsController.getSettings().selectedModel;
         const MAX_PROMPT_LENGTH = 5857; // chars, safe for most models
         const SUMMARIZATION_TIMEOUT = 88000; // 88 seconds
