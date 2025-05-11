@@ -695,13 +695,23 @@ Answer: [your final, concise answer based on the reasoning above]`;
         debugLog({ step: 'autoReadAndSummarizeFromSuggestion', selectedUrls: urlsToRead });
         if (!urlsToRead.length) return;
         state.autoReadInProgress = true;
+        const failedUrls = [];
         try {
             for (let i = 0; i < urlsToRead.length; i++) {
                 const url = urlsToRead[i];
                 UIController.showSpinner(`Reading ${i + 1} of ${urlsToRead.length} URLs: ${url}...`);
-                await deepReadUrl(url, 5, 2000);
+                try {
+                    await deepReadUrl(url, 5, 2000);
+                } catch (err) {
+                    failedUrls.push(url);
+                    UIController.addMessage('ai', `Warning: Could not read ${url} (${err && err.message ? err.message : err})`);
+                    // Continue to next URL
+                }
             }
             // After all reads, auto-summarize
+            if (failedUrls.length) {
+                UIController.addMessage('ai', `Skipped ${failedUrls.length} URLs due to errors.`);
+            }
             await summarizeSnippets();
         } finally {
             state.autoReadInProgress = false;
