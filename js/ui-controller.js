@@ -46,6 +46,8 @@ const UIController = (function() {
         if (sendButton) {
             sendButton.disabled = messageInput.value.trim().length === 0;
         }
+        // Autofocus message input on init
+        setTimeout(() => { messageInput.focus(); }, 0);
         
         // Add global event delegation for thinking toggle buttons
         document.addEventListener('click', function(event) {
@@ -273,6 +275,7 @@ const UIController = (function() {
         const messageInput = document.getElementById('message-input');
         messageInput.value = '';
         messageInput.style.height = 'auto'; // Reset height
+        focusMessageInput(); // Refocus after clearing
     }
 
     /**
@@ -478,6 +481,14 @@ const UIController = (function() {
         article.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
+    /**
+     * Focuses the message input field
+     */
+    function focusMessageInput() {
+        const messageInput = document.getElementById('message-input');
+        if (messageInput) messageInput.focus();
+    }
+
     // Public API
     return {
         init,
@@ -513,5 +524,6 @@ const UIController = (function() {
         showError,
         showEmptyState,
         hideEmptyState,
+        focusMessageInput,
     };
 })(); 
