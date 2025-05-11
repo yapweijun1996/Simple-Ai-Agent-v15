@@ -927,7 +927,8 @@ Answer: [your final, concise answer based on the reasoning above]`;
         debugLog('synthesizeFinalAnswer', summaries);
         if (!summaries || !state.originalUserQuestion) return;
         const selectedModel = SettingsController.getSettings().selectedModel;
-        const prompt = `Based on the following summaries, provide a final, concise answer to the original question.\n\nSummaries:\n${summaries}\n\nOriginal question: ${state.originalUserQuestion}`;
+        // Use a Chain of Thought prompt for the final answer
+        const prompt = `Based on the following summaries, please use step-by-step reasoning to answer the original question. Think carefully and show your reasoning process before giving your final answer.\n\nFormat your response like this:\nThinking: [detailed reasoning process, exploring different angles and considerations]\nAnswer: [your final, concise answer based on the reasoning above]\n\nSummaries:\n${summaries}\n\nOriginal question: ${state.originalUserQuestion}`;
         try {
             let finalAnswer = '';
             if (selectedModel.startsWith('gpt')) {
