@@ -418,7 +418,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
         try {
             if (state.settings.enableCoT) {
                 state.isThinking = true;
-                UIController.updateMessageContent(aiMsgElement, '🤔 Thinking...');
+                UIController.updateMessageContent(aiMsgElement, '🤔 Thinking...', 'ai');
             }
             const fullReply = await streamFn(
                 model,
@@ -431,9 +431,9 @@ Answer: [your final, concise answer based on the reasoning above]`;
                             state.isThinking = false;
                         }
                         const displayText = formatResponseForDisplay(processed);
-                        UIController.updateMessageContent(aiMsgElement, displayText);
+                        UIController.updateMessageContent(aiMsgElement, displayText, 'ai');
                     } else {
-                        UIController.updateMessageContent(aiMsgElement, fullText);
+                        UIController.updateMessageContent(aiMsgElement, fullText, 'ai');
                     }
                 }
             );
@@ -448,7 +448,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
                     console.log('AI Thinking:', processed.thinking);
                 }
                 const displayText = formatResponseForDisplay(processed);
-                UIController.updateMessageContent(aiMsgElement, displayText);
+                UIController.updateMessageContent(aiMsgElement, displayText, 'ai');
                 state.chatHistory.push({ role: 'assistant', content: fullReply });
             } else {
                 state.chatHistory.push({ role: 'assistant', content: fullReply });
@@ -458,7 +458,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
                 state.totalTokens += tokenCount;
             }
         } catch (err) {
-            UIController.updateMessageContent(aiMsgElement, 'Error: ' + err.message);
+            UIController.updateMessageContent(aiMsgElement, 'Error: ' + err.message, 'ai');
             throw err;
         } finally {
             state.isThinking = false;
@@ -488,10 +488,10 @@ Answer: [your final, concise answer based on the reasoning above]`;
                 }
                 state.chatHistory.push({ role: 'assistant', content: reply });
                 const displayText = formatResponseForDisplay(processed);
-                UIController.addMessage('ai', displayText);
+                UIController.updateMessageContent(aiMsgElement, displayText, 'ai');
             } else {
                 state.chatHistory.push({ role: 'assistant', content: reply });
-                UIController.addMessage('ai', reply);
+                UIController.updateMessageContent(aiMsgElement, reply, 'ai');
             }
         } catch (err) {
             throw err;
@@ -541,10 +541,10 @@ Answer: [your final, concise answer based on the reasoning above]`;
                 }
                 state.chatHistory.push({ role: 'assistant', content: textResponse });
                 const displayText = formatResponseForDisplay(processed);
-                UIController.addMessage('ai', displayText);
+                UIController.updateMessageContent(aiMsgElement, displayText, 'ai');
             } else {
                 state.chatHistory.push({ role: 'assistant', content: textResponse });
-                UIController.addMessage('ai', textResponse);
+                UIController.updateMessageContent(aiMsgElement, textResponse, 'ai');
             }
         } catch (err) {
             throw err;

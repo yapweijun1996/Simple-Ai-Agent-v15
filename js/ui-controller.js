@@ -152,7 +152,7 @@ const UIController = (function() {
         }
         
         // Format the message text
-        updateMessageContent(messageElement, text);
+        updateMessageContent(messageElement, text, sender);
         
         // Add to chat window and scroll into view
         chatWindow.appendChild(messageElement);
@@ -174,8 +174,9 @@ const UIController = (function() {
      * Updates the content of a message element
      * @param {Element} messageElement - The message element to update
      * @param {string} text - The new text content
+     * @param {string} sender - The sender ('user' or 'ai')
      */
-    function updateMessageContent(messageElement, text) {
+    function updateMessageContent(messageElement, text, sender) {
         if (!messageElement) return;
         const contentElement = messageElement.querySelector('.chat-app__message-content');
         if (!contentElement) return;
@@ -186,7 +187,13 @@ const UIController = (function() {
             setThinkingIndicator(contentElement);
             return;
         }
-        setFormattedContent(contentElement, text);
+        if (sender === 'ai' && window.marked) {
+            // Use marked.js to render markdown to HTML for AI replies
+            contentElement.className = 'chat-app__message-content';
+            contentElement.innerHTML = marked.parse(text);
+        } else {
+            setFormattedContent(contentElement, text);
+        }
         addToggleButton(messageElement, text);
     }
 
