@@ -392,18 +392,18 @@ const UIController = (function() {
         if (steps.length > 0) {
             formattedText = `<ol class="cot-steps">${steps.join('')}</ol>`;
             // Show answer if present after steps
-            const answerMatch = escapedText.match(/Answer:([\s\S]*)$/);
+            const answerMatch = escapedText.match(/(Answer:|Conclusion:)([\s\S]*)$/);
             if (answerMatch) {
-                formattedText += `<div class="answer-section"><strong>Answer:</strong><br>${escapeHtml(answerMatch[1].trim()).replace(/\n/g, '<br>')}</div>`;
+                formattedText += `<div class="answer-section"><strong>${escapeHtml(answerMatch[1])}</strong><br>${escapeHtml(answerMatch[2].trim()).replace(/\n/g, '<br>')}</div>`;
             }
-        } else if (escapedText.includes('Thinking:') && escapedText.includes('Answer:')) {
+        } else if ((escapedText.includes('Thinking:') || escapedText.includes('Reasoning:')) && (escapedText.includes('Answer:') || escapedText.includes('Conclusion:'))) {
             // Fallback: highlight CoT reasoning if present
-            const thinkingMatch = escapedText.match(/Thinking:(.*?)(?=Answer:|$)/s);
-            const answerMatch = escapedText.match(/Answer:(.*?)$/s);
+            const thinkingMatch = escapedText.match(/(Thinking:|Reasoning:)(.*?)(?=Answer:|Conclusion:|$)/s);
+            const answerMatch = escapedText.match(/(Answer:|Conclusion:)(.*?)$/s);
             if (thinkingMatch && answerMatch) {
-                const thinkingContent = escapeHtml(thinkingMatch[1].trim());
-                const answerContent = escapeHtml(answerMatch[1].trim());
-                formattedText = `<div class="thinking-section"><strong>Thinking:</strong><br>${thinkingContent.replace(/\n/g, '<br>')}</div>\n<div class="answer-section"><strong>Answer:</strong><br>${answerContent.replace(/\n/g, '<br>')}</div>`;
+                const thinkingContent = escapeHtml(thinkingMatch[2].trim());
+                const answerContent = escapeHtml(answerMatch[2].trim());
+                formattedText = `<div class="thinking-section"><strong>${escapeHtml(thinkingMatch[1])}</strong><br>${thinkingContent.replace(/\n/g, '<br>')}</div>\n<div class="answer-section"><strong>${escapeHtml(answerMatch[1])}</strong><br>${answerContent.replace(/\n/g, '<br>')}</div>`;
             }
         }
         // Format code blocks
@@ -427,7 +427,10 @@ const UIController = (function() {
 
     // Helper: Add toggle button for CoT responses
     function addToggleButton(messageElement, text) {
-        if (text.includes('Thinking:') && text.includes('Answer:') && messageElement.classList.contains('ai-message')) {
+        // Show toggle if any reasoning/answer block is present
+        const hasReasoning = /Thinking:|Reasoning:/.test(text);
+        const hasAnswer = /Answer:|Conclusion:/.test(text);
+        if (hasReasoning && hasAnswer && messageElement.classList.contains('ai-message')) {
             const toggleButton = document.createElement('button');
             toggleButton.className = 'toggle-thinking';
             toggleButton.textContent = 'Hide thinking';

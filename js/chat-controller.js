@@ -303,9 +303,7 @@ If you understand, follow these instructions for every relevant question. Do NOT
      * @returns {string} - The CoT enhanced message
      */
     function enhanceWithCoT(message) {
-        return `${message}\n\nI'd like you to use Chain of Thought reasoning. Please think step-by-step before providing your final answer. Format your response like this:
-Thinking: [detailed reasoning process, exploring different angles and considerations]
-Answer: [your final, concise answer based on the reasoning above]`;
+        return `${message}\n\nI'd like you to use Chain of Thought reasoning. Please think step-by-step before providing your final answer. Format your response like this:\nThinking: [detailed reasoning process, exploring different angles and considerations]\nAnswer: [your final, concise answer based on the reasoning above]\n\nYou may also use 'Reasoning:' instead of 'Thinking:' and 'Conclusion:' instead of 'Answer:' if you prefer. But always separate your reasoning and your final answer clearly.`;
     }
 
     /**
@@ -315,20 +313,20 @@ Answer: [your final, concise answer based on the reasoning above]`;
      * @returns {Object} - { thinkingSteps: [], answer: string, hasStructuredResponse, partial, error }
      */
     function parseCoTResponse(response, isPartial = false) {
-        // Support multiple 'Thinking:' and 'Answer:' blocks
+        // Support multiple reasoning and answer blocks (Thinking/Reasoning, Answer/Conclusion)
         const thinkingSteps = [];
         let answer = '';
         let error = null;
         let hasStructuredResponse = false;
-        // Regex to match all 'Thinking:' and 'Answer:' blocks
-        const regex = /(Thinking:)([\s\S]*?)(?=Thinking:|Answer:|$)|(Answer:)([\s\S]*?)(?=Thinking:|Answer:|$)/g;
+        // Regex to match all reasoning and answer blocks
+        const regex = /(Thinking:|Reasoning:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)|(Answer:|Conclusion:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)/g;
         let match;
         let foundAnswer = false;
         while ((match = regex.exec(response)) !== null) {
-            if (match[1] === 'Thinking:') {
+            if (match[1] === 'Thinking:' || match[1] === 'Reasoning:') {
                 thinkingSteps.push(match[2].trim());
                 hasStructuredResponse = true;
-            } else if (match[3] === 'Answer:') {
+            } else if (match[3] === 'Answer:' || match[3] === 'Conclusion:') {
                 answer = match[4].trim();
                 foundAnswer = true;
                 hasStructuredResponse = true;
