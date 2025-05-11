@@ -458,6 +458,46 @@ const UIController = (function() {
         article.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
+    /**
+     * Adds a read result to the chat window, with optional 'Read More' button
+     * @param {string} url - The URL that was read
+     * @param {string} snippet - The snippet of text read from the URL
+     * @param {boolean} hasMore - Whether there is more content to read
+     */
+    function addReadResult(url, snippet, hasMore) {
+        const chatWindow = document.getElementById('chat-window');
+        const article = document.createElement('article');
+        article.className = 'chat-app__message ai-message read-result';
+        // Card structure
+        const card = document.createElement('div');
+        card.className = 'read-result-card';
+        // Header with icon and link
+        const header = document.createElement('div');
+        header.className = 'read-result-header';
+        header.innerHTML = `<span class="read-result-icon" aria-hidden="true">📖</span><a href="${url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(url)}</a>`;
+        card.appendChild(header);
+        // Snippet
+        const snippetDiv = document.createElement('div');
+        snippetDiv.className = 'read-result-snippet';
+        snippetDiv.textContent = snippet;
+        card.appendChild(snippetDiv);
+        // Optional: Add 'Read More' button
+        if (hasMore) {
+            const readMoreBtn = document.createElement('button');
+            readMoreBtn.className = 'read-more-btn';
+            readMoreBtn.textContent = 'Read More';
+            readMoreBtn.addEventListener('click', () => {
+                // Dispatch a custom event for reading more
+                const event = new CustomEvent('readMoreFromUrl', { detail: { url, prevLength: snippet.length } });
+                window.dispatchEvent(event);
+            });
+            card.appendChild(readMoreBtn);
+        }
+        article.appendChild(card);
+        chatWindow.appendChild(article);
+        article.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
     // Public API
     return {
         init,
