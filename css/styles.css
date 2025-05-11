@@ -1126,39 +1126,6 @@ body:not(.light-mode) .read-result-snippet {
 body:not(.light-mode) .read-result-snippet.faded::after {
   background: linear-gradient(180deg, rgba(35,39,46,0) 0%, #23272e 90%);
 }
-.read-more-btn {
-  display: block;
-  width: fit-content;
-  align-self: flex-end;
-  margin-top: 8px;
-  background: #4f8cff;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 18px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 1px 4px #4f8cff22;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.read-more-btn:hover, .read-more-btn:focus {
-  background: #0056b3;
-  box-shadow: 0 2px 8px #4f8cff44;
-}
-@media (max-width: 600px) {
-  .read-result-card {
-    padding: 10px 8px 10px 8px;
-    font-size: 0.97rem;
-  }
-  .read-result-header {
-    font-size: 0.97rem;
-  }
-  .read-more-btn {
-    font-size: 0.97rem;
-    padding: 6px 12px;
-  }
-}
 
 /* --- Improved Search Result Card Styles --- */
 .search-result-card {

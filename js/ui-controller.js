@@ -432,14 +432,7 @@ const UIController = (function() {
         snippetDiv.className = 'search-result-snippet';
         snippetDiv.textContent = result.snippet;
         card.appendChild(snippetDiv);
-        // Optional: Add 'Read More' button
-        if (typeof onReadMore === 'function') {
-            const readMoreBtn = document.createElement('button');
-            readMoreBtn.className = 'read-more-btn';
-            readMoreBtn.textContent = 'Read More';
-            readMoreBtn.addEventListener('click', () => onReadMore(result));
-            card.appendChild(readMoreBtn);
-        }
+        // Removed: Read More button
         article.appendChild(card);
         chatWindow.appendChild(article);
         article.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -468,18 +461,7 @@ const UIController = (function() {
         snippetDiv.className = 'read-result-snippet';
         snippetDiv.textContent = snippet;
         card.appendChild(snippetDiv);
-        // Optional: Add 'Read More' button
-        if (hasMore) {
-            const readMoreBtn = document.createElement('button');
-            readMoreBtn.className = 'read-more-btn';
-            readMoreBtn.textContent = 'Read More';
-            readMoreBtn.addEventListener('click', () => {
-                // Dispatch a custom event for reading more
-                const event = new CustomEvent('readMoreFromUrl', { detail: { url, prevLength: snippet.length } });
-                window.dispatchEvent(event);
-            });
-            card.appendChild(readMoreBtn);
-        }
+        // Removed: Read More button
         article.appendChild(card);
         chatWindow.appendChild(article);
         article.scrollIntoView({ behavior: 'smooth', block: 'end' });
