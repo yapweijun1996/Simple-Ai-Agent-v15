@@ -1235,13 +1235,55 @@ body:not(.light-mode) .search-result-snippet {
 
 /* Sticky chat controls on mobile */
 @media (max-width: 600px) {
-  #controls {
+  #controls, .chat-app__controls {
     position: sticky;
     bottom: 0;
-    background: var(--background-color, #fff);
-    z-index: 10;
+    left: 0;
+    transform: none;
+    width: 100vw;
+    max-width: 100vw;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: var(--space-sm) var(--space-xs) env(safe-area-inset-bottom, 0px) var(--space-xs);
+    z-index: 1000;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--space-xs);
+    background: var(--container-bg);
+    border-top: 1px solid var(--border-color);
     box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .chat-app__message-input {
+    flex: 1 1 0%;
+    min-width: 0;
+    font-size: 1rem;
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
+    margin-right: var(--space-xs);
+  }
+  .chat-app__send-button {
+    flex: 0 0 auto;
+    font-size: 1rem;
+    padding: 0 var(--space-md);
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: var(--radius-sm);
+  }
+}
+@media (max-width: 400px) {
+  #controls, .chat-app__controls {
+    padding: var(--space-xs) env(safe-area-inset-left, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-right, 0px);
+    gap: 2px;
+  }
+  .chat-app__message-input {
+    font-size: 0.95rem;
+    padding: 6px;
+  }
+  .chat-app__send-button {
+    font-size: 0.95rem;
+    padding: 0 10px;
+    min-width: 38px;
+    min-height: 38px;
   }
 }
 
