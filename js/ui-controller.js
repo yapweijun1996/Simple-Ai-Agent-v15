@@ -529,6 +529,12 @@ const UIController = (function() {
     function clearStatus() {
         clearStatusBar(document.getElementById('status-bar'));
     }
+    function showSpinner(message, agentDetails) {
+        setStatusBar(document.getElementById('status-bar'), { type: 'progress', message, agentDetails, showSpinner: true });
+    }
+    function hideSpinner() {
+        clearStatusBar(document.getElementById('status-bar'));
+    }
 
     // Public API
     return {
