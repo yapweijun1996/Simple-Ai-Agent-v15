@@ -178,8 +178,13 @@ const UIController = (function() {
         if (sender === 'ai') {
             setTimeout(() => {
                 const messageInput = document.getElementById('message-input');
+                console.log('[Focus Debug] Running focus logic after agent reply.');
+                console.log('[Focus Debug] Current activeElement:', document.activeElement);
                 if (messageInput && document.activeElement !== messageInput) {
+                    console.log('[Focus Debug] Focusing messageInput:', messageInput);
                     messageInput.focus();
+                } else {
+                    console.log('[Focus Debug] Not focusing: messageInput missing or already focused.');
                 }
             }, 100);
         }
