@@ -52,7 +52,7 @@
 </head>
 <body>
     <!-- Main chat container -->
-    <main id="chat-container" class="chat-app" style="display: none;">
+    <main id="chat-container" class="chat-app hidden">
         <!-- Chat Header Component -->
         <header class="chat-app__header">
             <h2 class="chat-app__header-title">AI Chat</h2>
@@ -71,7 +71,7 @@
 
         <!-- Chat Messages Component -->
         <section id="chat-window" class="chat-app__window" aria-live="polite" role="log"></section>
-        <div id="status-bar" class="chat-app__status-bar" role="status" aria-live="polite" style="visibility:hidden;"></div>
+        <div id="status-bar" class="chat-app__status-bar invisible" role="status" aria-live="polite"></div>
 
         <!-- Chat Controls Component -->
         <footer id="controls" class="chat-app__controls">
@@ -158,7 +158,7 @@
                 <div class="settings-modal__actions">
                     <button id="login-button" class="settings-modal__button settings-modal__button--primary">Login</button>
                 </div>
-                <div id="login-error" style="color: var(--danger-color); margin-top: var(--space-md); display: none;">
+                <div id="login-error" class="login-error hidden">
                     Invalid password. Please try again.
                 </div>
             </div>

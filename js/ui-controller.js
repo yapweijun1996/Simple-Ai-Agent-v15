@@ -21,7 +21,7 @@ const UIController = (function() {
      */
     function init() {
         // Show the chat container
-        document.getElementById('chat-container').style.display = 'flex';
+        document.getElementById('chat-container').classList.remove('hidden');
         
         // Add enter key handler for message input
         const messageInput = document.getElementById('message-input');
@@ -91,7 +91,7 @@ const UIController = (function() {
         }
         chatWindow.addEventListener('scroll', function() {
             const atBottom = chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight < 40;
-            btn.style.display = atBottom ? 'none' : 'block';
+            btn.classList.toggle('hidden', atBottom);
         });
     }
 
@@ -298,7 +298,9 @@ const UIController = (function() {
     function clearUserInput() {
         const messageInput = document.getElementById('message-input');
         messageInput.value = '';
+        // TODO: Refactor dynamic height assignment to use CSS variables or classes if possible
         messageInput.style.height = 'auto'; // Reset height
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
     }
 
     /**
@@ -324,7 +326,7 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = message;
-            bar.style.visibility = 'visible';
+            bar.classList.remove('invisible');
         }
     }
 
@@ -332,7 +334,7 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = '';
-            bar.style.visibility = 'hidden';
+            bar.classList.add('invisible');
         }
     }
 
@@ -341,14 +343,14 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message}`;
-            bar.style.visibility = 'visible';
+            bar.classList.remove('invisible');
         }
     }
     function hideSpinner() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = '';
-            bar.style.visibility = 'hidden';
+            bar.classList.add('invisible');
         }
     }
 
@@ -425,7 +427,7 @@ const UIController = (function() {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
             empty.setAttribute('aria-live', 'polite');
-            empty.innerHTML = '<div style="font-size:2.5em;">💬</div><div style="margin-top:10px;">Start a conversation with your AI assistant!<br><span style="font-size:0.95em;color:#888;">Ask anything, get instant answers.</span></div>';
+            empty.innerHTML = '<div class="empty-state-icon">💬</div><div class="empty-state-message">Start a conversation with your AI assistant!<br><span class="empty-state-subtext">Ask anything, get instant answers.</span></div>';
             chatWindow.appendChild(empty);
         }
     }
@@ -442,7 +444,7 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = '';
-            bar.style.visibility = 'visible';
+            bar.classList.remove('invisible');
             bar.setAttribute('role', 'alert');
             bar.setAttribute('aria-live', 'assertive');
             // Add close button
@@ -452,16 +454,16 @@ const UIController = (function() {
             closeBtn.setAttribute('aria-label', 'Close error message');
             closeBtn.onclick = function() {
                 bar.textContent = '';
-                bar.style.visibility = 'hidden';
+                bar.classList.add('invisible');
                 bar.removeAttribute('role');
                 bar.removeAttribute('aria-live');
             };
             bar.appendChild(document.createTextNode(message));
             bar.appendChild(closeBtn);
             setTimeout(() => {
-                if (bar.style.visibility === 'visible') {
+                if (!bar.classList.contains('invisible')) {
                     bar.textContent = '';
-                    bar.style.visibility = 'hidden';
+                    bar.classList.add('invisible');
                     bar.removeAttribute('role');
                     bar.removeAttribute('aria-live');
                 }

@@ -85,7 +85,7 @@ const SettingsController = (function() {
         }
         
         // Ensure current settings are reflected when opening
-        settingsModal.style.display = 'flex';
+        settingsModal.classList.remove('hidden');
         document.getElementById('streaming-toggle').checked = settings.streaming;
         document.getElementById('cot-toggle').checked = settings.enableCoT;
         document.getElementById('show-thinking-toggle').checked = settings.showThinking;
@@ -107,7 +107,7 @@ const SettingsController = (function() {
      */
     function hideSettingsModal() {
         if (settingsModal) {
-            settingsModal.style.display = 'none';
+            settingsModal.classList.add('hidden');
             // Restore focus to settings button
             if (showSettingsModal.lastFocused) {
                 showSettingsModal.lastFocused.focus();

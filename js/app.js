@@ -26,7 +26,7 @@ const App = (function() {
         ChatController.init(savedSettings);
         
         // Show main container (will be visible but login modal on top)
-        document.getElementById('chat-container').style.display = 'flex';
+        document.getElementById('chat-container').classList.remove('hidden');
         
         // Check for saved password
         checkPasswordOrPrompt();
@@ -70,8 +70,8 @@ const App = (function() {
             }, 100);
         }
         
-        loginModal.style.display = 'flex';
-        document.getElementById('login-error').style.display = 'none';
+        loginModal.classList.remove('hidden');
+        document.getElementById('login-error').classList.add('hidden');
     }
     
     /**
@@ -84,7 +84,7 @@ const App = (function() {
         
         if (!password) {
             document.getElementById('login-error').textContent = 'Password is required.';
-            document.getElementById('login-error').style.display = 'block';
+            document.getElementById('login-error').classList.remove('hidden');
             return;
         }
         
@@ -102,11 +102,11 @@ const App = (function() {
             }
             
             // Hide the login modal
-            loginModal.style.display = 'none';
+            loginModal.classList.add('hidden');
         } else {
             // Show error message
             document.getElementById('login-error').textContent = 'Invalid password. Please try again.';
-            document.getElementById('login-error').style.display = 'block';
+            document.getElementById('login-error').classList.remove('hidden');
             Utils.clearSavedPassword();
             passwordInput.value = '';
             passwordInput.focus();

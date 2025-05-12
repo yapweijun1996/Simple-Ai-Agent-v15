@@ -967,6 +967,10 @@ body:not(.light-mode) .chat-app__settings-button:focus {
     margin-bottom: 8px;
 }
 
+.empty-state-icon { font-size: 2.5em; margin-bottom: 8px; }
+.empty-state-message { margin-top: 10px; }
+.empty-state-subtext { font-size: 0.95em; color: #888; }
+
 /* --- Message Bubble Hover/Active Effects --- */
 .chat-app__message:hover {
     box-shadow: 0 6px 24px #4f8cff33, 0 2px 8px #0002;
@@ -1465,4 +1469,9 @@ body:not(.light-mode) .scroll-to-bottom-btn:hover, body:not(.light-mode) .scroll
 .code-block-wrapper {
     position: relative;
     margin-bottom: 1em;
-} 
+}
+
+.hidden { display: none !important; }
+.invisible { visibility: hidden !important; }
+
+.login-error { color: var(--danger-color); margin-top: var(--space-md); } 
