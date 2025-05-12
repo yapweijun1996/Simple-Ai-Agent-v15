@@ -301,7 +301,7 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = `${message} ${formatAgentDetails(agentDetails)}`;
-            bar.style.visibility = 'visible';
+            bar.classList.add('chat-app__status-bar--active');
         }
     }
 
@@ -309,7 +309,7 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = '';
-            bar.style.visibility = 'hidden';
+            bar.classList.remove('chat-app__status-bar--active');
         }
     }
 
@@ -318,14 +318,14 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message} ${formatAgentDetails(agentDetails)}`;
-            bar.style.visibility = 'visible';
+            bar.classList.add('chat-app__status-bar--active');
         }
     }
     function hideSpinner() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = '';
-            bar.style.visibility = 'hidden';
+            bar.classList.remove('chat-app__status-bar--active');
         }
     }
 
@@ -419,12 +419,12 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = message;
-            bar.style.visibility = 'visible';
+            bar.classList.add('chat-app__status-bar--active');
             bar.setAttribute('role', 'alert');
             bar.setAttribute('aria-live', 'assertive');
             setTimeout(() => {
                 bar.textContent = '';
-                bar.style.visibility = 'hidden';
+                bar.classList.remove('chat-app__status-bar--active');
                 bar.removeAttribute('role');
                 bar.removeAttribute('aria-live');
             }, 3000);
@@ -482,28 +482,28 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar-under-token');
         if (bar) {
             bar.innerHTML = `${message} ${formatAgentDetails(agentDetails)}`;
-            bar.style.visibility = 'visible';
+            bar.classList.add('chat-app__status-bar--active');
         }
     }
     function clearStatusUnderToken() {
         const bar = document.getElementById('status-bar-under-token');
         if (bar) {
             bar.textContent = '';
-            bar.style.visibility = 'hidden';
+            bar.classList.remove('chat-app__status-bar--active');
         }
     }
     function showSpinnerUnderToken(message, agentDetails) {
         const bar = document.getElementById('status-bar-under-token');
         if (bar) {
             bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message} ${formatAgentDetails(agentDetails)}`;
-            bar.style.visibility = 'visible';
+            bar.classList.add('chat-app__status-bar--active');
         }
     }
     function hideSpinnerUnderToken() {
         const bar = document.getElementById('status-bar-under-token');
         if (bar) {
             bar.innerHTML = '';
-            bar.style.visibility = 'hidden';
+            bar.classList.remove('chat-app__status-bar--active');
         }
     }
 
