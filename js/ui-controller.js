@@ -577,6 +577,61 @@ const UIController = (function() {
         if (messageInput) messageInput.focus();
     }
 
+    // Helper: Show loading in search results group
+    function showSearchResultsLoading() {
+        const chatWindow = document.getElementById('chat-window');
+        // Find or create the group
+        let groupContainer = chatWindow.querySelector('.search-result-group');
+        if (!groupContainer) {
+            groupContainer = document.createElement('div');
+            groupContainer.className = 'search-result-group';
+            groupContainer.style.margin = '12px 0';
+            groupContainer.style.border = '1px solid var(--border-color, #333)';
+            groupContainer.style.borderRadius = '8px';
+            groupContainer.style.background = 'var(--background-secondary, #181a20)';
+            groupContainer.style.overflow = 'hidden';
+            groupContainer.style.padding = '0';
+            groupContainer.dataset.closed = 'false';
+            chatWindow.appendChild(groupContainer);
+        }
+        let resultsWrapper = groupContainer.querySelector('.search-results-wrapper');
+        if (!resultsWrapper) {
+            resultsWrapper = document.createElement('div');
+            resultsWrapper.className = 'search-results-wrapper';
+            groupContainer.appendChild(resultsWrapper);
+        }
+        resultsWrapper.style.display = '';
+        resultsWrapper.innerHTML = '<div class="search-loading-indicator" style="padding: 24px; text-align: center; color: var(--primary-color); font-size: 1.1em;"><span class="spinner" style="margin-right:8px;"></span>Loading search results...</div>';
+        // Hide toggle if present
+        const toggleBtn = groupContainer.querySelector('.search-result-toggle-btn');
+        if (toggleBtn) toggleBtn.style.display = 'none';
+    }
+
+    // Helper: Hide loading in search results group
+    function hideSearchResultsLoading() {
+        const chatWindow = document.getElementById('chat-window');
+        const groupContainer = chatWindow.querySelector('.search-result-group');
+        if (!groupContainer) return;
+        const resultsWrapper = groupContainer.querySelector('.search-results-wrapper');
+        if (resultsWrapper) resultsWrapper.innerHTML = '';
+        // Show toggle if present
+        const toggleBtn = groupContainer.querySelector('.search-result-toggle-btn');
+        if (toggleBtn) toggleBtn.style.display = 'block';
+    }
+
+    // Patch: Show 'Thinking...' in empty AI message
+    const origAddMessage = addMessage;
+    addMessage = function(sender, text) {
+        const msg = origAddMessage.call(this, sender, text);
+        if (sender === 'ai' && (!text || text.trim() === '')) {
+            const contentElement = msg.querySelector('.chat-app__message-content');
+            if (contentElement) {
+                contentElement.innerHTML = '<span class="thinking-dots" aria-label="Thinking">Thinking<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>';
+            }
+        }
+        return msg;
+    };
+
     // Public API
     return {
         init,
