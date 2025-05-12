@@ -746,4 +746,27 @@ If you understand, follow these instructions for every relevant question. Do NOT
             state.lastToolCallCount = 1;
         }
         if (state.lastToolCallCount > state.MAX_TOOL_CALL_REPEAT) {
-            UIController.addMessage('ai', `Error: Tool call loop detected. The same tool call has been made more than ${state.MAX_TOOL_CALL_REPEAT} times in a row. Stopping to prevent infinite loop.`
+            UIController.addMessage('ai', `Error: Tool call loop detected. The same tool call has been made more than ${state.MAX_TOOL_CALL_REPEAT} times in a row. Stopping to prevent infinite loop.`);
+        }
+        // ... (rest of processToolCall logic, if any)
+    }
+
+    // Expose public API
+    return {
+        init,
+        updateSettings,
+        clearChat,
+        getSettings,
+        enhanceWithCoT,
+        parseCoTResponse,
+        getCoTParsingFeedback,
+        formatResponseForDisplay,
+        isValidUserInput,
+        setInputState,
+        prepareMessage,
+        sendMessage,
+        handleOpenAIMessage,
+        handleGeminiMessage,
+        processToolCall
+    };
+})();
