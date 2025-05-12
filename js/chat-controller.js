@@ -432,7 +432,11 @@ Answer: [your final, concise answer based on the reasoning above]`;
                             state.isThinking = false;
                         }
                         const displayText = formatResponseForDisplay(processed);
-                        UIController.updateMessageContent(aiMsgElement, displayText);
+                        if (isPlanMessage(displayText)) {
+                            UIController.addMessage('ai', displayText, 'plan');
+                        } else {
+                            UIController.updateMessageContent(aiMsgElement, displayText);
+                        }
                     } else {
                         UIController.updateMessageContent(aiMsgElement, fullText);
                     }
@@ -449,7 +453,11 @@ Answer: [your final, concise answer based on the reasoning above]`;
                     console.log('AI Thinking:', processed.thinking);
                 }
                 const displayText = formatResponseForDisplay(processed);
-                UIController.updateMessageContent(aiMsgElement, displayText);
+                if (isPlanMessage(displayText)) {
+                    UIController.addMessage('ai', displayText, 'plan');
+                } else {
+                    UIController.updateMessageContent(aiMsgElement, displayText);
+                }
                 state.chatHistory.push({ role: 'assistant', content: fullReply });
             } else {
                 state.chatHistory.push({ role: 'assistant', content: fullReply });
@@ -489,7 +497,11 @@ Answer: [your final, concise answer based on the reasoning above]`;
                 }
                 state.chatHistory.push({ role: 'assistant', content: reply });
                 const displayText = formatResponseForDisplay(processed);
-                UIController.addMessage('ai', displayText);
+                if (isPlanMessage(displayText)) {
+                    UIController.addMessage('ai', displayText, 'plan');
+                } else {
+                    UIController.addMessage('ai', displayText);
+                }
             } else {
                 state.chatHistory.push({ role: 'assistant', content: reply });
                 UIController.addMessage('ai', reply);
@@ -542,7 +554,11 @@ Answer: [your final, concise answer based on the reasoning above]`;
                 }
                 state.chatHistory.push({ role: 'assistant', content: textResponse });
                 const displayText = formatResponseForDisplay(processed);
-                UIController.addMessage('ai', displayText);
+                if (isPlanMessage(displayText)) {
+                    UIController.addMessage('ai', displayText, 'plan');
+                } else {
+                    UIController.addMessage('ai', displayText);
+                }
             } else {
                 state.chatHistory.push({ role: 'assistant', content: textResponse });
                 UIController.addMessage('ai', textResponse);
@@ -919,6 +935,12 @@ Answer: [your final, concise answer based on the reasoning above]`;
             enableCoT: settings.enableCoT,
             showThinking: settings.showThinking
         };
+    }
+
+    // Helper: Detect if a message is a plan/narration
+    function isPlanMessage(text) {
+        const planPatterns = [/^Plan:/i, /^Here is my plan:/i, /^My plan:/i, /^Step 1:/i, /^I will /i];
+        return planPatterns.some(re => re.test(text.trim()));
     }
 
     // Public API
