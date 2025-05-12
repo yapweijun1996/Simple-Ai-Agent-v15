@@ -477,6 +477,36 @@ const UIController = (function() {
         }
     }
 
+    // Status bar under token-usage controls
+    function showStatusUnderToken(message, agentDetails) {
+        const bar = document.getElementById('status-bar-under-token');
+        if (bar) {
+            bar.innerHTML = `${message} ${formatAgentDetails(agentDetails)}`;
+            bar.style.visibility = 'visible';
+        }
+    }
+    function clearStatusUnderToken() {
+        const bar = document.getElementById('status-bar-under-token');
+        if (bar) {
+            bar.textContent = '';
+            bar.style.visibility = 'hidden';
+        }
+    }
+    function showSpinnerUnderToken(message, agentDetails) {
+        const bar = document.getElementById('status-bar-under-token');
+        if (bar) {
+            bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message} ${formatAgentDetails(agentDetails)}`;
+            bar.style.visibility = 'visible';
+        }
+    }
+    function hideSpinnerUnderToken() {
+        const bar = document.getElementById('status-bar-under-token');
+        if (bar) {
+            bar.innerHTML = '';
+            bar.style.visibility = 'hidden';
+        }
+    }
+
     // Public API
     return {
         init,
@@ -493,6 +523,10 @@ const UIController = (function() {
         addReadResult,
         showSpinner,
         hideSpinner,
+        showStatusUnderToken,
+        clearStatusUnderToken,
+        showSpinnerUnderToken,
+        hideSpinnerUnderToken,
         /**
          * Adds a chat bubble with raw HTML content (for tool results)
          * @param {string} sender - 'user' or 'ai'

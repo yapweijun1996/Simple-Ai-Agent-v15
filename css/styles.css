@@ -1419,4 +1419,10 @@ body:not(.light-mode) .scroll-to-bottom-btn:hover, body:not(.light-mode) .scroll
     letter-spacing: 0.01em;
     opacity: 0.85;
     display: inline-block;
+}
+
+/* Status Bar Under Token Usage (shares style with main status bar) */
+#status-bar-under-token.chat-app__status-bar {
+    /* No extra styles needed; uses .chat-app__status-bar */
+    margin-bottom: 0;
 } 
