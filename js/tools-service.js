@@ -55,67 +55,26 @@ const ToolsService = (function() {
      * @returns {Promise<Array<{title:string,url:string,snippet:string}>>}
      */
     async function webSearch(query, onResult, engine = 'duckduckgo') {
-      let searchUrl, parseResults;
-      if (engine === 'google') {
-        searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en`;
-        parseResults = function(htmlString) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(htmlString, 'text/html');
-          const items = doc.querySelectorAll('div.g');
-          const results = [];
-          items.forEach(item => {
-            const anchor = item.querySelector('a');
-            const titleElem = item.querySelector('h3');
-            if (!anchor || !titleElem) return;
-            const href = anchor.href;
-            const title = titleElem.textContent.trim();
-            const snippetElem = item.querySelector('.VwiC3b, .IsZvec');
-            const snippet = snippetElem ? snippetElem.textContent.trim() : '';
-            results.push({ title, url: href, snippet });
-          });
-          return results;
-        };
-      } else if (engine === 'bing') {
-        searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
-        parseResults = function(htmlString) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(htmlString, 'text/html');
-          const items = doc.querySelectorAll('li.b_algo');
-          const results = [];
-          items.forEach(item => {
-            const anchor = item.querySelector('a');
-            const titleElem = item.querySelector('h2');
-            if (!anchor || !titleElem) return;
-            const href = anchor.href;
-            const title = titleElem.textContent.trim();
-            const snippetElem = item.querySelector('p');
-            const snippet = snippetElem ? snippetElem.textContent.trim() : '';
-            results.push({ title, url: href, snippet });
-          });
-          return results;
-        };
-      } else {
-        // Default to DuckDuckGo
-        searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-        parseResults = function(htmlString) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(htmlString, 'text/html');
-          const container = doc.getElementById('links');
-          if (!container) return [];
-          const items = container.querySelectorAll('div.result');
-          const results = [];
-          items.forEach(item => {
-            const anchor = item.querySelector('a.result__a');
-            if (!anchor) return;
-            const href = getFinalUrl(anchor.href);
-            const title = anchor.textContent.trim();
-            const snippetElem = item.querySelector('a.result__snippet, div.result__snippet');
-            const snippet = snippetElem ? snippetElem.textContent.trim() : '';
-            results.push({ title, url: href, snippet });
-          });
-          return results;
-        };
-      }
+      // Only DuckDuckGo is supported now
+      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+      const parseResults = function(htmlString) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        const container = doc.getElementById('links');
+        if (!container) return [];
+        const items = container.querySelectorAll('div.result');
+        const results = [];
+        items.forEach(item => {
+          const anchor = item.querySelector('a.result__a');
+          if (!anchor) return;
+          const href = getFinalUrl(anchor.href);
+          const title = anchor.textContent.trim();
+          const snippetElem = item.querySelector('a.result__snippet, div.result__snippet');
+          const snippet = snippetElem ? snippetElem.textContent.trim() : '';
+          results.push({ title, url: href, snippet });
+        });
+        return results;
+      };
       // Sort proxies by health score
       const sortedProxies = proxies.slice().sort((a, b) => (proxyHealth.get(b.name) || 0) - (proxyHealth.get(a.name) || 0));
       let partialResults = [];
