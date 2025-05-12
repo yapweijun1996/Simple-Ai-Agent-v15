@@ -878,15 +878,12 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 }
             }
             // After all reads, auto-summarize
-            if (failedUrls.length) {
-                UIController.addMessage('ai', `Skipped ${failedUrls.length} URLs due to errors.`);
-            }
-            await summarizeSnippets();
+            await summarizeSnippets(null, 1, failedUrls);
         } finally {
             state.autoReadInProgress = false;
             // Always attempt to synthesize a final answer, even if all snippets failed
             if (!state.readSnippets.length) {
-                await synthesizeFinalAnswer('');
+                // No need to call synthesizeFinalAnswer here; summarizeSnippets will handle the error message
             }
         }
     }
@@ -951,13 +948,18 @@ If you understand, follow these instructions for every relevant question. Do NOT
     }
 
     // Summarization logic (recursive, context-aware)
-    async function summarizeSnippets(snippets = null, round = 1) {
-        debugLog('summarizeSnippets', { snippets, round });
+    async function summarizeSnippets(snippets = null, round = 1, failedUrls = []) {
+        debugLog('summarizeSnippets', { snippets, round, failedUrls });
         if (!snippets) snippets = state.readSnippets;
         if (!snippets.length) {
             // No snippets, synthesize a fallback answer
-            UIController.addMessage('ai', 'Sorry, I could not retrieve enough information to answer your question due to network or proxy errors.');
-            await synthesizeFinalAnswer('');
+            let errorMsg = 'Sorry, I could not retrieve enough information to answer your question due to network or proxy errors.';
+            if (failedUrls && failedUrls.length) {
+                errorMsg += '\nFailed to fetch the following URLs:';
+                errorMsg += '\n' + failedUrls.map(url => `- ${url}`).join('\n');
+            }
+            UIController.addMessage('ai', errorMsg);
+            // Do not call synthesizeFinalAnswer with empty summaries
             return;
         }
         const selectedModel = SettingsController.getSettings().selectedModel;
@@ -991,7 +993,12 @@ If you understand, follow these instructions for every relevant question. Do NOT
                     }
                 }
                 if (aiReply) {
-                    UIController.addMessage('ai', `Summary:\n${aiReply}`);
+                    let summaryMsg = `Summary:\n${aiReply}`;
+                    if (failedUrls && failedUrls.length) {
+                        summaryMsg += '\n\nNote: Some web pages could not be retrieved:';
+                        summaryMsg += '\n' + failedUrls.map(url => `- ${url}`).join('\n');
+                    }
+                    UIController.addMessage('ai', summaryMsg);
                 }
             } catch (err) {
                 UIController.addMessage('ai', `Summarization failed. Error: ${err && err.message ? err.message : err}`);
@@ -1041,11 +1048,16 @@ If you understand, follow these instructions for every relevant question. Do NOT
             if (combined.length > MAX_PROMPT_LENGTH) {
                 UIController.showSpinner(`Round ${round + 1}: Combining summaries...`);
                 UIController.showStatus(`Round ${round + 1}: Combining summaries...`);
-                await summarizeSnippets(batchSummaries, round + 1);
+                await summarizeSnippets(batchSummaries, round + 1, failedUrls);
             } else {
+                let summaryMsg = `Summary:\n${combined}`;
+                if (failedUrls && failedUrls.length) {
+                    summaryMsg += '\n\nNote: Some web pages could not be retrieved:';
+                    summaryMsg += '\n' + failedUrls.map(url => `- ${url}`).join('\n');
+                }
                 UIController.showSpinner(`Round ${round}: Finalizing summary...`);
                 UIController.showStatus(`Round ${round}: Finalizing summary...`);
-                UIController.addMessage('ai', `Summary:\n${combined}`);
+                UIController.addMessage('ai', summaryMsg);
                 // Prompt for final answer after all summaries
                 await synthesizeFinalAnswer(combined);
             }
