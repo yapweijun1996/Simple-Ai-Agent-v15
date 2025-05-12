@@ -315,9 +315,9 @@ const UIController = (function() {
     }
 
     // --- Status Bar Logic (Refined) ---
-    // Persistent log for status bar messages (per bar)
-    const statusBarLogs = new Map();
-    let statusBarCollapsed = new Map();
+    // Persistent log for status bar messages
+    const statusBarLog = [];
+    let statusBarCollapsed = false;
 
     function setStatusBar(bar, { type = 'info', message = '', agentDetails = null, showSpinner = false, autoDismiss = false }) {
         if (!bar) return;
@@ -345,18 +345,16 @@ const UIController = (function() {
             barClass = 'status-bar--info';
             closeBtn.style.display = '';
         }
-        // Add to log (per bar)
-        if (!statusBarLogs.has(bar)) statusBarLogs.set(bar, []);
-        const log = statusBarLogs.get(bar);
+        // Add to log
         const logEntry = {
             type,
             message: message + (agentDetails ? ' ' + formatAgentDetails(agentDetails) : ''),
             iconHtml,
             timestamp: new Date().toLocaleTimeString()
         };
-        log.push(logEntry);
+        statusBarLog.push(logEntry);
         // Limit log size for performance
-        if (log.length > 100) log.shift();
+        if (statusBarLog.length > 100) statusBarLog.shift();
         // Render log
         renderStatusBarLog(bar, barClass, ariaRole, ariaLive);
         // Auto-dismiss for info
@@ -376,18 +374,16 @@ const UIController = (function() {
         const msg = bar.querySelector('.status-bar__message');
         const icon = bar.querySelector('.status-bar__icon');
         icon.innerHTML = '';
-        if (!statusBarCollapsed.has(bar)) statusBarCollapsed.set(bar, false);
-        if (statusBarCollapsed.get(bar)) {
+        if (statusBarCollapsed) {
             msg.innerHTML = `<button class="status-bar__expand" aria-label="Expand log">Show Log ▼</button>`;
             bar.querySelector('.status-bar__expand').onclick = () => {
-                statusBarCollapsed.set(bar, false);
+                statusBarCollapsed = false;
                 renderStatusBarLog(bar, barClass, ariaRole, ariaLive);
             };
             return;
         }
-        const log = statusBarLogs.get(bar) || [];
         let logHtml = '<div class="status-bar__log-list" style="max-height:120px;overflow-y:auto;text-align:left;">';
-        for (const entry of log) {
+        for (const entry of statusBarLog) {
             logHtml += `<div class="status-bar__log-entry"><span class="status-bar__log-time">[${entry.timestamp}]</span> <span class="status-bar__log-icon">${entry.iconHtml}</span> <span>${entry.message}</span></div>`;
         }
         logHtml += '</div>';
@@ -396,12 +392,12 @@ const UIController = (function() {
         msg.innerHTML = logHtml;
         // Collapse button
         bar.querySelector('.status-bar__collapse').onclick = () => {
-            statusBarCollapsed.set(bar, true);
+            statusBarCollapsed = true;
             renderStatusBarLog(bar, barClass, ariaRole, ariaLive);
         };
         // Clear button
         bar.querySelector('.status-bar__clear').onclick = () => {
-            statusBarLogs.set(bar, []);
+            statusBarLog.length = 0;
             renderStatusBarLog(bar, barClass, ariaRole, ariaLive);
         };
     }
@@ -415,7 +411,7 @@ const UIController = (function() {
         bar.removeAttribute('role');
         bar.removeAttribute('aria-live');
         // Optionally clear log on close (comment out if you want to persist log after close)
-        // statusBarLogs.set(bar, []);
+        // statusBarLog.length = 0;
     }
 
     // Attach close button listeners (for both bars)
