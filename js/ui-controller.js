@@ -176,13 +176,12 @@ const UIController = (function() {
         messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
         // Focus the textarea after AI replies for better UX
         if (sender === 'ai') {
-            const messageInput = document.getElementById('message-input');
-            if (messageInput) {
-                // Only focus if not already focused (avoid interrupting user typing)
-                if (document.activeElement !== messageInput) {
+            setTimeout(() => {
+                const messageInput = document.getElementById('message-input');
+                if (messageInput && document.activeElement !== messageInput) {
                     messageInput.focus();
                 }
-            }
+            }, 100);
         }
         
         return messageElement;
