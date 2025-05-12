@@ -493,30 +493,27 @@ If you understand, follow these instructions for every relevant question. Do NOT
         return state.settings.enableCoT ? enhanceWithCoT(message) : message;
     }
 
-    // Refactored sendMessage
-    async function sendMessage() {
-        const message = UIController.getUserInput();
+    // Refactored sendMessage with retry logic
+    async function sendMessage(messageOverride = null, retryCount = 0, maxRetries = 2) {
+        const message = messageOverride !== null ? messageOverride : UIController.getUserInput();
         if (!isValidUserInput(message)) return;
-        state.originalUserQuestion = message;
-        state.toolWorkflowActive = true;
-
-        UIController.showStatus('Sending message...');
+        if (retryCount === 0) {
+            state.originalUserQuestion = message;
+            state.toolWorkflowActive = true;
+            UIController.addMessage('user', message);
+        }
+        UIController.showStatus(retryCount > 0 ? `Retrying... (Attempt ${retryCount + 1})` : 'Sending message...');
         setInputState(false);
-
         state.lastThinkingContent = '';
         state.lastAnswerContent = '';
-
-        UIController.addMessage('user', message);
-        UIController.clearUserInput();
-
+        if (retryCount === 0) UIController.clearUserInput();
         const enhancedMessage = prepareMessage(message);
         const currentSettings = SettingsController.getSettings();
         const selectedModel = currentSettings.selectedModel;
-
         try {
             if (selectedModel.startsWith('gpt')) {
-                state.chatHistory.push({ role: 'user', content: enhancedMessage });
-                console.log("Sent enhanced message to GPT:", enhancedMessage);
+                if (retryCount === 0) state.chatHistory.push({ role: 'user', content: enhancedMessage });
+                console.log(`Sent enhanced message to GPT (attempt ${retryCount + 1}):`, enhancedMessage);
                 await handleOpenAIMessage(selectedModel, enhancedMessage);
             } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
                 if (state.chatHistory.length === 0) {
@@ -525,10 +522,30 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 await handleGeminiMessage(selectedModel, enhancedMessage);
             }
         } catch (error) {
-            console.error('Error sending message:', error);
+            console.error(`Error sending message (attempt ${retryCount + 1}):`, error);
             let userMsg = '';
             if (error && error.message && error.message.toLowerCase().includes('timeout')) {
-                userMsg = '⏰ The AI took too long to respond. Please try again, refine your question, or check your network connection.';
+                if (retryCount < maxRetries) {
+                    // Automatic retry
+                    UIController.addMessage('ai', `⏰ Timeout occurred. Retrying... (Attempt ${retryCount + 2} of ${maxRetries + 1})`);
+                    await sendMessage(message, retryCount + 1, maxRetries);
+                    return;
+                } else {
+                    // All retries failed, show retry button
+                    userMsg = '⏰ The AI took too long to respond after multiple attempts.';
+                    UIController.addHtmlMessage('ai', `${userMsg} <button class="retry-btn" style="margin-left:10px;">Retry</button>`);
+                    // Add event listener for retry button
+                    setTimeout(() => {
+                        const retryBtn = document.querySelector('.retry-btn');
+                        if (retryBtn) {
+                            retryBtn.onclick = () => {
+                                retryBtn.disabled = true;
+                                sendMessage(message, 0, maxRetries);
+                            };
+                        }
+                    }, 100);
+                    return;
+                }
             } else if (error && error.message && (
                 error.message.includes('Failed to fetch') ||
                 error.message.includes('Service Unavailable') ||
