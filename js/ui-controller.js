@@ -374,12 +374,21 @@ const UIController = (function() {
         let formattedText = escapedText;
         // New: check for structured steps array in processed response
         if (typeof text === 'object' && text.steps && Array.isArray(text.steps) && text.steps.length > 0) {
-            // Render steps as ordered list with type and summary, wrapped in a collapsible container
-            formattedText = `<div class="cot-reasoning" style="display:block;" title="This section shows the AI's step-by-step reasoning process."><ol class="cot-steps">` + text.steps.map(step =>
-                `<li title=\"This is an intermediate step in the AI's reasoning.\"><span class="cot-step-number">Step ${step.number}</span> <span class="cot-step-type">[${step.type}]</span>: ${escapeHtml(step.text)}<br><span class="cot-step-summary"><em>Summary:</em> ${escapeHtml(step.summary)}</span></li>`
-            ).join('') + '</ol></div>';
+            // Icon and color for each step type
+            const typeMeta = {
+                'Fact':   { icon: '📄', color: '#4f8cff' },
+                'Assumption': { icon: '💡', color: '#ffb347' },
+                'Action': { icon: '⚙️', color: '#4caf50' },
+                'Decision': { icon: '✅', color: '#ff5c5c' },
+                'Step':   { icon: '🔎', color: '#b0b0b0' }
+            };
+            // Render steps as a timeline/stepper
+            formattedText = `<div class=\"cot-reasoning-stepper\" role=\"list\" aria-label=\"AI reasoning steps\" style=\"display:block;\">\n                <ol class=\"cot-steps-timeline\">` + text.steps.map(step => {
+                const meta = typeMeta[step.type] || typeMeta['Step'];
+                return `<li class=\"cot-step-item\" data-type=\"${step.type}\" role=\"listitem\" style=\"border-left: 4px solid ${meta.color}; margin-bottom: 1em; padding-left: 1em; position: relative;\">\n                    <span class=\"cot-step-icon\" aria-hidden=\"true\" style=\"position: absolute; left: -1.5em; top: 0; font-size: 1.2em; color: ${meta.color};\">${meta.icon}</span>\n                    <span class=\"cot-step-number\" style=\"font-weight: bold; color: ${meta.color};\">Step ${step.number}</span>\n                    <span class="cot-step-type\" style=\"margin-left: 0.5em; color: ${meta.color};\">[${step.type}]</span>:\n                    <span class=\"cot-step-text\">${escapeHtml(step.text)}</span><br>\n                    <span class=\"cot-step-summary\" style=\"color: #888;\"><em>Summary:</em> ${escapeHtml(step.summary)}</span>\n                </li>`;
+            }).join('') + '</ol></div>';
             if (text.answer) {
-                formattedText += `<div class="answer-section"><strong>Final Answer:</strong><br>${escapeHtml(text.answer).replace(/\n/g, '<br>')}</div>`;
+                formattedText += `<div class="answer-section" style="margin-top:1em;"><strong>Final Answer:</strong><br>${escapeHtml(text.answer).replace(/\n/g, '<br>')}</div>`;
             }
             return warningHtml + formattedText;
         }

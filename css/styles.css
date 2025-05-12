@@ -1539,4 +1539,90 @@ body:not(.light-mode) .chat-app__message-content ol ol {
 }
 .thinking-collapsed .answer-section {
   display: block;
+}
+
+/* === Chain of Thought Stepper/Timeline === */
+.cot-reasoning-stepper {
+    margin: 0.5em 0 0.5em 0;
+    padding: 0.5em 0 0.5em 0;
+    background: rgba(79,140,255,0.06);
+    border-radius: var(--radius-md);
+    box-shadow: 0 1px 4px #4f8cff11;
+}
+.cot-steps-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 1.5em;
+    position: relative;
+}
+.cot-step-item {
+    margin-bottom: 1em;
+    padding-left: 1em;
+    border-left: 4px solid var(--primary-color);
+    position: relative;
+    background: none;
+    transition: background 0.2s;
+}
+.cot-step-item:last-child {
+    margin-bottom: 0;
+}
+.cot-step-icon {
+    position: absolute;
+    left: -1.5em;
+    top: 0;
+    font-size: 1.2em;
+    color: var(--primary-color);
+    background: var(--container-bg);
+    border-radius: 50%;
+    width: 1.5em;
+    height: 1.5em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.cot-step-number {
+    font-weight: bold;
+    margin-right: 0.5em;
+}
+.cot-step-type {
+    font-weight: 500;
+    margin-left: 0.5em;
+}
+.cot-step-summary {
+    color: #888;
+    font-size: 0.98em;
+    margin-left: 0.5em;
+}
+/* Color coding for step types */
+.cot-step-item[data-type="Fact"] {
+    border-left-color: #4f8cff;
+}
+.cot-step-item[data-type="Assumption"] {
+    border-left-color: #ffb347;
+}
+.cot-step-item[data-type="Action"] {
+    border-left-color: #4caf50;
+}
+.cot-step-item[data-type="Decision"] {
+    border-left-color: #ff5c5c;
+}
+.cot-step-item[data-type="Step"] {
+    border-left-color: #b0b0b0;
+}
+@media (max-width: 600px) {
+    .cot-reasoning-stepper {
+        padding: 0.2em 0.2em 0.2em 0.2em;
+    }
+    .cot-steps-timeline {
+        padding-left: 1em;
+    }
+    .cot-step-item {
+        padding-left: 0.7em;
+    }
+    .cot-step-icon {
+        left: -1.2em;
+        font-size: 1em;
+        width: 1.2em;
+        height: 1.2em;
+    }
 } 
