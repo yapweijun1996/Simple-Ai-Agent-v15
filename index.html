@@ -70,7 +70,6 @@
         <!-- Chat Messages Component -->
         <section id="chat-window" class="chat-app__window" aria-live="polite" role="log"></section>
         <div id="status-bar" class="chat-app__status-bar" role="status" aria-live="polite" style="visibility:hidden;"></div>
-        <div class="status-bar__progress" aria-label="AI is reasoning" style="display:none"></div>
 
         <!-- Chat Controls Component -->
         <footer id="controls" class="chat-app__controls">
@@ -110,14 +109,6 @@
                         <input type="checkbox" id="show-thinking-toggle" class="settings-modal__checkbox">
                         Show AI thinking process
                     </label>
-                </div>
-                <div class="settings-modal__item">
-                    <label for="reasoning-detail-level" class="settings-modal__label" title="Choose how detailed the AI's reasoning steps should be.">Reasoning detail level:</label>
-                    <select id="reasoning-detail-level" class="settings-modal__select" aria-label="Reasoning detail level">
-                        <option value="brief">Brief</option>
-                        <option value="standard" selected>Standard</option>
-                        <option value="detailed">Detailed</option>
-                    </select>
                 </div>
                 <div class="settings-modal__item">
                     <label for="dark-mode-toggle" class="settings-modal__label" title="Switch between light and dark mode for better visibility.">
@@ -180,6 +171,5 @@
     <script src="js/chat-controller.js"></script>
     <script src="js/settings-controller.js"></script>
     <script src="js/app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </body>
 </html> 

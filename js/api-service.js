@@ -57,31 +57,6 @@ const ApiService = (function() {
         }
     }
 
-    // --- API Key Helpers ---
-    function getOpenAIApiKey() {
-        return (typeof apiKey === 'string' && apiKey.trim()) ? apiKey.trim() : null;
-    }
-    function requireOpenAIApiKey() {
-        const key = getOpenAIApiKey();
-        if (!key) {
-            const err = new Error('OpenAI API key is missing or invalid. Please enter your API key in the settings.');
-            err.userMessage = 'OpenAI API key is missing or invalid. Please enter your API key in the settings.';
-            throw err;
-        }
-        return key;
-    }
-    function getGeminiApiKey() {
-        return (typeof geminiApiKey === 'string' && geminiApiKey.trim()) ? geminiApiKey.trim() : null;
-    }
-    function checkApiReady() {
-        return !!getOpenAIApiKey() && !!getGeminiApiKey();
-    }
-
-    // --- Modular Generation Config ---
-    function getGenerationConfig(overrides = {}) {
-        return { ...generationConfig, ...overrides };
-    }
-
     /**
      * Sends a non-streaming request to OpenAI API
      * @param {string} model - The model to use
@@ -90,29 +65,22 @@ const ApiService = (function() {
      * @returns {Promise<Object>} - The API response
      */
     async function sendOpenAIRequest(model, messages, timeout = 10000) {
-        const key = requireOpenAIApiKey();
         const payload = { model, messages };
-        let response;
-        try {
-            response = await Utils.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': 'Bearer ' + key 
-                },
-                body: JSON.stringify(payload)
-            }, 3, 1000, timeout);
-        } catch (err) {
-            err.userMessage = 'Network error or invalid OpenAI API key.';
-            throw err;
-        }
+        const response = await Utils.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': 'Bearer ' + apiKey 
+            },
+            body: JSON.stringify(payload)
+        }, 3, 1000, timeout);
+        
         if (!response.ok) {
             const errText = await response.text();
-            const err = new Error(`API error ${response.status}: ${errText}`);
-            err.userMessage = `OpenAI API error: ${errText}`;
-            throw err;
+            throw new Error(`API error ${response.status}: ${errText}`);
         }
+        
         return response.json();
     }
 
@@ -124,59 +92,47 @@ const ApiService = (function() {
      * @returns {Promise<string>} - The full response text
      */
     async function streamOpenAIRequest(model, messages, onChunk) {
-        const key = requireOpenAIApiKey();
-        let response;
-        try {
-            response = await Utils.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': 'Bearer ' + key 
-                },
-                body: JSON.stringify({ model, messages, stream: true })
-            }, 3, 1000, 10000);
-        } catch (err) {
-            err.userMessage = 'Network error or invalid OpenAI API key.';
-            throw err;
-        }
+        const response = await Utils.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': 'Bearer ' + apiKey 
+            },
+            body: JSON.stringify({ model, messages, stream: true })
+        }, 3, 1000, 10000);
+        
         if (!response.ok) {
             const errText = await response.text();
-            const err = new Error(`API error ${response.status}: ${errText}`);
-            err.userMessage = `OpenAI API error: ${errText}`;
-            throw err;
+            throw new Error(`API error ${response.status}: ${errText}`);
         }
+        
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let done = false;
         let eventBuffer = '';
         let fullReply = '';
-        const STREAM_TIMEOUT = 30000;
+        
         while (!done) {
-            let readResult;
-            try {
-                readResult = await Promise.race([
-                    reader.read(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), STREAM_TIMEOUT))
-                ]);
-            } catch (err) {
-                try { reader.cancel(); } catch {}
-                err.userMessage = 'OpenAI streaming request timed out.';
-                throw err;
-            }
-            const { value, done: doneReading } = readResult;
+            const { value, done: doneReading } = await reader.read();
             done = doneReading;
+            
+            // Accumulate and split complete SSE events
             eventBuffer += decoder.decode(value || new Uint8Array(), { stream: !done });
             const events = eventBuffer.split(/\r?\n\r?\n/);
-            eventBuffer = events.pop();
+            eventBuffer = events.pop(); // keep incomplete event
+            
             for (const ev of events) {
+                // Each ev is one SSE event block
                 const lines = ev.split(/\r?\n/);
                 for (const line of lines) {
                     const parsed = Utils.parseSSELine(line);
                     if (!parsed) continue;
+                    
                     if (parsed.done) {
                         done = true;
                         break;
                     }
+                    
                     const delta = parsed.data?.choices?.[0]?.delta;
                     if (delta?.content) {
                         fullReply += delta.content;
@@ -186,6 +142,7 @@ const ApiService = (function() {
                 if (done) break;
             }
         }
+        
         return fullReply;
     }
     
@@ -263,21 +220,9 @@ const ApiService = (function() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let done = false, buffer = '', fullReply = '';
-        const STREAM_TIMEOUT = 30000; // 30 seconds per chunk
         
         while (!done) {
-            // Add timeout for each read
-            let readResult;
-            try {
-                readResult = await Promise.race([
-                    reader.read(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), STREAM_TIMEOUT))
-                ]);
-            } catch (err) {
-                try { reader.cancel(); } catch {}
-                throw new Error('timeout');
-            }
-            const { value, done: doneReading } = readResult;
+            const { value, done: doneReading } = await reader.read();
             done = doneReading;
             
             buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
@@ -353,10 +298,6 @@ const ApiService = (function() {
         streamOpenAIRequest,
         createGeminiSession,
         streamGeminiRequest,
-        getTokenUsage,
-        getOpenAIApiKey,
-        getGeminiApiKey,
-        checkApiReady,
-        getGenerationConfig
+        getTokenUsage
     };
 })(); 

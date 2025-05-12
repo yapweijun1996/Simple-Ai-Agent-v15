@@ -135,21 +135,6 @@ const App = (function() {
     // Initialize the app when the DOM is ready
     window.addEventListener('DOMContentLoaded', init);
     
-    // Global error handler for uncaught errors
-    window.onerror = function(message, source, lineno, colno, error) {
-        console.error('Global error:', message, error);
-        if (window.UIController && typeof UIController.showError === 'function') {
-            UIController.showError('A critical error occurred: ' + (error && error.message ? error.message : message));
-        }
-    };
-
-    window.onunhandledrejection = function(event) {
-        console.error('Global unhandled promise rejection:', event.reason);
-        if (window.UIController && typeof UIController.showError === 'function') {
-            UIController.showError('A critical error occurred: ' + (event.reason && event.reason.message ? event.reason.message : event.reason));
-        }
-    };
-    
     // Public API
     return {
         init,

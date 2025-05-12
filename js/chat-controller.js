@@ -61,22 +61,49 @@ Begin Reasoning Now:
     // Tool handler registry
     const toolHandlers = {
         web_search: async function(args) {
-            try {
-                debugLog('Tool: web_search', args);
-                if (!args.query || typeof args.query !== 'string' || !args.query.trim()) {
-                    UIController.addMessage('ai', 'Error: Invalid web_search query.');
-                    return;
+            debugLog('Tool: web_search', args);
+            if (!args.query || typeof args.query !== 'string' || !args.query.trim()) {
+                UIController.addMessage('ai', 'Error: Invalid web_search query.');
+                return;
+            }
+            const engine = args.engine || 'duckduckgo';
+            const userQuestion = state.originalUserQuestion || args.query;
+            let queriesTried = [args.query];
+            let allResults = [];
+            let lastResults = [];
+            let attempts = 0;
+            const MAX_ATTEMPTS = 3;
+            while (attempts < MAX_ATTEMPTS) {
+                UIController.showSpinner(`Searching (${engine}) for "${queriesTried[attempts]}"...`);
+                UIController.showStatus(`Searching (${engine}) for "${queriesTried[attempts]}"...`);
+                let results = [];
+                try {
+                    const streamed = [];
+                    results = await ToolsService.webSearch(queriesTried[attempts], (result) => {
+                        streamed.push(result);
+                        // Pass highlight flag if this index is in highlightedResultIndices
+                        const idx = streamed.length - 1;
+                        UIController.addSearchResult(result, (url) => {
+                            processToolCall({ tool: 'read_url', arguments: { url, start: 0, length: 1122 } });
+                        }, state.highlightedResultIndices.has(idx));
+                    }, engine);
+                    debugLog(`Web search results for query [${queriesTried[attempts]}]:`, results);
+                } catch (err) {
+                    UIController.hideSpinner();
+                    UIController.addMessage('ai', `Web search failed: ${err.message}`);
+                    state.chatHistory.push({ role: 'assistant', content: `Web search failed: ${err.message}` });
+                    break;
                 }
-                const engine = args.engine || 'duckduckgo';
-                const userQuestion = state.originalUserQuestion || args.query;
-                let queriesToTry = [args.query];
-                let aiSuggestedQueries = [];
-                // Ask AI for 2 alternative queries
+                allResults = allResults.concat(results);
+                lastResults = results;
+                // If good results, break
+                if (results.length >= 3 || attempts === MAX_ATTEMPTS - 1) break;
+                // Ask AI for a better query
+                let betterQuery = null;
                 try {
                     const selectedModel = SettingsController.getSettings().selectedModel;
                     let aiReply = '';
-                    // Improved prompt with examples and explicit instructions
-                    const prompt = `Given the user question: "${userQuestion}", suggest 2 alternative web search queries that are:\n- Different in wording, focus, or approach (not just minor rewordings)\n- Likely to retrieve different or complementary information\n- Use synonyms, related topics, or different angles if possible\n\nFor each, reply with the query on a new line. Avoid trivial changes.\n\nExample:\nUser question: \"What are the health benefits of green tea?\"\nGood alternatives:\n- Scientific studies on green tea and health\n- Green tea antioxidants effects on the body\nBad alternatives:\n- What are the health benefits of green tea? (identical)\n- Green tea health benefits (trivial rewording)`;
+                    const prompt = `The initial web search for the user question did not yield enough relevant results.\n\nUser question: ${userQuestion}\nInitial query: ${queriesTried[attempts]}\nSearch results (titles and snippets):\n${results.map((r, i) => `${i+1}. ${r.title} - ${r.snippet}`).join('\n')}\n\nSuggest a better search query to find more relevant information. Reply with only the improved query, or repeat the previous query if no better query is possible.`;
                     if (selectedModel.startsWith('gpt')) {
                         const res = await ApiService.sendOpenAIRequest(selectedModel, [
                             { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
@@ -97,110 +124,40 @@ Begin Reasoning Now:
                             aiReply = candidate.content.text.trim();
                         }
                     }
-                    // Filter out suggestions that are too similar to the original or to each other
-                    aiSuggestedQueries = aiReply.split('\n').map(q => q.trim()).filter(q => q && !queriesToTry.includes(q));
-                    // Use Levenshtein distance and length ratio to filter
-                    const minDistance = 5; // Minimum edit distance to consider as different
-                    const minLengthRatio = 0.7;
-                    aiSuggestedQueries = aiSuggestedQueries.filter(q => {
-                        const dist = Utils.levenshtein(q.toLowerCase(), args.query.toLowerCase());
-                        const lenRatio = Math.min(q.length, args.query.length) / Math.max(q.length, args.query.length);
-                        return dist >= minDistance || lenRatio < minLengthRatio;
-                    });
-                    // Remove near-duplicates among suggestions
-                    const uniqueSuggestions = [];
-                    aiSuggestedQueries.forEach(q => {
-                        if (!uniqueSuggestions.some(uq => {
-                            const dist = Utils.levenshtein(q.toLowerCase(), uq.toLowerCase());
-                            const lenRatio = Math.min(q.length, uq.length) / Math.max(q.length, uq.length);
-                            return dist < minDistance && lenRatio >= minLengthRatio;
-                        })) {
-                            uniqueSuggestions.push(q);
-                        }
-                    });
-                    aiSuggestedQueries = uniqueSuggestions;
-                    queriesToTry = queriesToTry.concat(aiSuggestedQueries);
-                    debugLog('AI suggested alternative queries (filtered):', aiSuggestedQueries);
+                    debugLog('AI suggested improved query:', aiReply);
+                    if (aiReply && !queriesTried.includes(aiReply)) {
+                        queriesTried.push(aiReply);
+                    } else {
+                        break; // No better query or repeated, stop
+                    }
                 } catch (err) {
-                    debugLog('Error getting alternative queries from AI:', err);
+                    debugLog('Error getting improved query from AI:', err);
+                    break;
                 }
-                let allResults = [];
-                for (const query of queriesToTry) {
-                    UIController.showSpinner(`Searching (${engine}) for "${query}"...`);
-                    UIController.showStatus(`Searching (${engine}) for "${query}"...`);
-                    let results = [];
-                    try {
-                        const streamed = [];
-                        // --- Add timeout here ---
-                        const SEARCH_TIMEOUT_MS = 15000; // 15 seconds
-                        results = await Promise.race([
-                            ToolsService.webSearch(query, (result) => {
-                                streamed.push(result);
-                                // Pass highlight flag if this index is in highlightedResultIndices
-                                const idx = streamed.length - 1;
-                                UIController.addSearchResult(result, (url) => {
-                                    processToolCall({ tool: 'read_url', arguments: { url, start: 0, length: 1122 } });
-                                }, state.highlightedResultIndices.has(idx));
-                            }, engine),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error('Search timed out after 15 seconds.')), SEARCH_TIMEOUT_MS))
-                        ]);
-                        debugLog(`Web search results for query [${query}]:`, results);
-                    } catch (err) {
-                        UIController.hideSpinner();
-                        debugLog('Web search error:', err);
-                        if (err && err.message && (err.message === 'All proxies failed' || err.message.includes('timed out'))) {
-                            UIController.showError('Could not fetch page due to network/proxy error or timeout. Please try again later.');
-                            // Add retry button
-                            UIController.addHtmlMessage('ai', `Web search failed for "${query}": ${err.message} <button class="retry-btn" style="margin-left:10px;">Retry</button>`);
-                            setTimeout(() => {
-                                const retryBtn = document.querySelector('.retry-btn');
-                                if (retryBtn) {
-                                    retryBtn.onclick = () => {
-                                        retryBtn.disabled = true;
-                                        processToolCall({ tool: 'web_search', arguments: { query, engine } });
-                                    };
-                                }
-                            }, 100);
-                        } else {
-                            UIController.addMessage('ai', `Web search failed for "${query}": ${err && err.message ? err.message : 'Unknown error.'}`);
-                        }
-                        state.chatHistory.push({ role: 'assistant', content: `Web search failed for "${query}": ${err && err.message ? err.message : 'Unknown error.'}` });
-                        continue;
-                    }
-                    allResults = allResults.concat(results);
-                }
-                UIController.hideSpinner();
-                UIController.clearStatus();
-                if (!allResults.length) {
-                    UIController.addMessage('ai', `No search results found for "${args.query}" after trying multiple queries.`);
-                }
-                // Remove duplicate results by URL
-                const uniqueResults = [];
-                const seenUrls = new Set();
-                debugLog({ step: 'deduplication', before: allResults });
-                for (const r of allResults) {
-                    if (!seenUrls.has(r.url)) {
-                        uniqueResults.push(r);
-                        seenUrls.add(r.url);
-                    }
-                }
-                debugLog({ step: 'deduplication', after: uniqueResults });
-                const plainTextResults = uniqueResults.map((r, i) => `${i+1}. ${r.title} (${r.url}) - ${r.snippet}`).join('\n');
-                state.chatHistory.push({ role: 'assistant', content: `Search results for "${args.query}" (total ${uniqueResults.length}):\n${plainTextResults}` });
-                state.lastSearchResults = uniqueResults;
-                debugLog({ step: 'suggestResultsToRead', results: uniqueResults });
-                // Prompt AI to suggest which results to read
-                await suggestResultsToRead(uniqueResults, args.query);
-            } catch (err) {
-                debugLog('Top-level web_search error:', err);
-                UIController.hideSpinner();
-                UIController.clearStatus();
-                UIController.addMessage('ai', `Web search failed: ${err && err.message ? err.message : 'Unknown error.'}`);
-            } finally {
-                UIController.hideSpinner();
-                UIController.clearStatus();
-                setInputState(true);
+                attempts++;
             }
+            UIController.hideSpinner();
+            UIController.clearStatus();
+            if (!allResults.length) {
+                UIController.addMessage('ai', `No search results found for "${args.query}" after ${attempts+1} attempts.`);
+            }
+            // Remove duplicate results by URL
+            const uniqueResults = [];
+            const seenUrls = new Set();
+            debugLog({ step: 'deduplication', before: allResults });
+            for (const r of allResults) {
+                if (!seenUrls.has(r.url)) {
+                    uniqueResults.push(r);
+                    seenUrls.add(r.url);
+                }
+            }
+            debugLog({ step: 'deduplication', after: uniqueResults });
+            const plainTextResults = uniqueResults.map((r, i) => `${i+1}. ${r.title} (${r.url}) - ${r.snippet}`).join('\n');
+            state.chatHistory.push({ role: 'assistant', content: `Search results for "${args.query}" (total ${uniqueResults.length}):\n${plainTextResults}` });
+            state.lastSearchResults = uniqueResults;
+            debugLog({ step: 'suggestResultsToRead', results: uniqueResults });
+            // Prompt AI to suggest which results to read
+            await suggestResultsToRead(uniqueResults, args.query);
         },
         read_url: async function(args) {
             debugLog('Tool: read_url', args);
@@ -224,9 +181,6 @@ Begin Reasoning Now:
                 // (Manual summarization removed: summarization now only happens in auto-read workflow)
             } catch (err) {
                 UIController.hideSpinner();
-                if (err && err.message && err.message === 'All proxies failed') {
-                    UIController.showError('Could not fetch page due to network/proxy error. Please try again later.');
-                }
                 UIController.addMessage('ai', `Read URL failed: ${err.message}`);
                 state.chatHistory.push({ role: 'assistant', content: `Read URL failed: ${err.message}` });
             }
@@ -332,178 +286,73 @@ If you understand, follow these instructions for every relevant question. Do NOT
      * @returns {string} - The CoT enhanced message
      */
     function enhanceWithCoT(message) {
-        const detailLevel = (state.settings && state.settings.reasoningDetailLevel) || 'standard';
-        let detailInstruction = '';
-        if (detailLevel === 'brief') {
-            detailInstruction = 'Be as concise as possible, only include the most essential steps.';
-        } else if (detailLevel === 'detailed') {
-            detailInstruction = 'Be very thorough, include all relevant facts, checks, and possible alternatives.';
-        } else {
-            detailInstruction = 'Provide a clear, step-by-step explanation.';
-        }
-        return `${message}\n\nPlease answer using step-by-step reasoning. For each step, label it as [Fact], [Assumption], [Action], or [Decision]. After each step, provide a one-line summary of progress. At the end, give a final answer, clearly separated.\n${detailInstruction}\n\nFormat:\nStep 1 [Fact]: ...\nSummary: ...\nStep 2 [Action]: ...\nSummary: ...\n...\nFinal Answer: ...`;
+        return `${message}\n\nI'd like you to use Chain of Thought reasoning. Please think step-by-step before providing your final answer. Format your response like this:
+Thinking: [detailed reasoning process, exploring different angles and considerations]
+Answer: [your final, concise answer based on the reasoning above]`;
     }
 
-    /**
-     * Robustly parses CoT response for multiple steps and malformed formats
-     * @param {string} response - The AI response
-     * @param {boolean} isPartial - If this is a partial/streamed response
-     * @returns {Object} - { steps: [], answer: string, hasStructuredResponse, partial, error }
-     */
+    // 2. Merge processCoTResponse and processPartialCoTResponse into parseCoTResponse
     function parseCoTResponse(response, isPartial = false) {
-        // Flexible regex: Accepts Step N, Reasoning:, Thinking:, etc. (case-insensitive, extra whitespace tolerated)
-        const stepRegex = /(?:Step\s*(\d+)[\s:,-]*)?(?:\[(Fact|Assumption|Action|Decision)\])?[:\-\s]*([\s\S]*?)(?:\n+Summary[:\-\s]*([\s\S]*?)(?=\n|$))?/gi;
-        const answerRegex = /(?:Final\s*Answer|Answer|Conclusion)[:\-\s]*([\s\S]*)$/i;
-        const steps = [];
-        let match;
-        let lastIndex = 0;
-        let foundStep = false;
-        // Try to extract steps
-        while ((match = stepRegex.exec(response)) !== null) {
-            // Only consider if there's meaningful content
-            if ((match[1] || match[2] || match[3]) && match[3] && match[3].trim().length > 0) {
-                steps.push({
-                    number: match[1] ? parseInt(match[1], 10) : steps.length + 1,
-                    type: match[2] || 'Step',
-                    text: match[3].trim(),
-                    summary: match[4] ? match[4].trim() : ''
-                });
-                foundStep = true;
-                lastIndex = stepRegex.lastIndex;
-            }
-        }
-        // Try to extract answer
-        let answer = '';
-        let answerMatch = response.match(answerRegex);
-        if (answerMatch) {
-            answer = answerMatch[1].trim();
-        } else if (foundStep) {
-            // If steps found but no answer, try to find the next non-step text as answer
-            const afterSteps = response.slice(lastIndex).trim();
-            if (afterSteps.length > 0) answer = afterSteps;
-        }
-        // Fallback: Try to extract reasoning/answer blocks if above fails
-        if (!foundStep && !answer) {
-            const fallbackRegex = /(Thinking:|Reasoning:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)|(Answer:|Conclusion:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)/gi;
-            let thinkingSteps = [];
-            let fallbackAnswer = '';
-            let hasStructuredResponse = false;
-            let error = null;
-            let m;
-            let foundAnswer = false;
-            while ((m = fallbackRegex.exec(response)) !== null) {
-                if (m[1] === 'Thinking:' || m[1] === 'Reasoning:') {
-                    thinkingSteps.push(m[2].trim());
-                    hasStructuredResponse = true;
-                } else if (m[3] === 'Answer:' || m[3] === 'Conclusion:') {
-                    fallbackAnswer = m[4].trim();
-                    foundAnswer = true;
-                    hasStructuredResponse = true;
-                }
-            }
-            if (!hasStructuredResponse) {
-                if (response.trim().length === 0) {
-                    error = 'Empty response from AI.';
-                } else {
-                    fallbackAnswer = response.trim();
-                    error = 'AI response did not follow the expected format.';
-                }
-            } else if (!foundAnswer && thinkingSteps.length > 0) {
-                error = 'AI response missing final Answer.';
-            }
-            state.lastThinkingContent = thinkingSteps.join('\n---\n');
-            state.lastAnswerContent = fallbackAnswer;
+        const thinkingMatch = response.match(/Thinking:(.*?)(?=Answer:|$)/s);
+        const answerMatch = response.match(/Answer:(.*?)$/s);
+        if (thinkingMatch && answerMatch) {
+            state.lastThinkingContent = thinkingMatch[1].trim();
+            state.lastAnswerContent = answerMatch[1].trim();
             return {
-                steps: [],
-                answer: fallbackAnswer,
-                hasStructuredResponse,
+                thinking: state.lastThinkingContent,
+                answer: state.lastAnswerContent,
+                hasStructuredResponse: true,
                 partial: isPartial,
-                error,
-                stage: isPartial && !foundAnswer ? 'thinking' : undefined
+                stage: isPartial && !answerMatch[1].trim() ? 'thinking' : undefined
             };
-        }
-        // If nothing could be parsed, fallback to raw response with warning
-        if (!foundStep && !answer) {
+        } else if (response.startsWith('Thinking:') && !response.includes('Answer:')) {
+            state.lastThinkingContent = response.replace(/^Thinking:/, '').trim();
             return {
-                steps: [],
-                answer: response.trim(),
+                thinking: state.lastThinkingContent,
+                answer: state.lastAnswerContent,
+                hasStructuredResponse: true,
+                partial: true,
+                stage: 'thinking'
+            };
+        } else if (response.includes('Thinking:') && !thinkingMatch) {
+            const thinking = response.replace(/^.*?Thinking:/s, 'Thinking:');
+            return {
+                thinking: thinking.replace(/^Thinking:/, '').trim(),
+                answer: '',
                 hasStructuredResponse: false,
-                partial: isPartial,
-                error: 'AI response could not be parsed. Showing raw output.'
+                partial: true
             };
         }
-        // Store last reasoning and answer for compatibility
-        state.lastThinkingContent = steps.map(s => s.text).join('\n---\n');
-        state.lastAnswerContent = answer;
         return {
-            steps,
-            answer,
-            hasStructuredResponse: true,
-            partial: isPartial,
-            error: null,
-            stage: isPartial && !answer ? 'thinking' : undefined
+            thinking: '',
+            answer: response,
+            hasStructuredResponse: false
         };
     }
 
     /**
-     * Helper to summarize parsing issues for UI feedback
-     * @param {Object} parsed - Output of parseCoTResponse
-     * @returns {string|null} - User-friendly error message or null
-     */
-    function getCoTParsingFeedback(parsed) {
-        if (parsed.error) {
-            if (parsed.error === 'Empty response from AI.') {
-                return '⚠️ AI returned an empty response.';
-            } else if (parsed.error === 'AI response did not follow the expected format.') {
-                return '⚠️ AI response did not follow the expected "Thinking: ... Answer: ..." format.';
-            } else if (parsed.error === 'AI response missing final Answer.') {
-                return '⚠️ AI response is missing a final Answer.';
-            } else {
-                return `⚠️ ${parsed.error}`;
-            }
-        }
-        return null;
-    }
-
-    /**
      * Formats the response for display based on settings
-     * @param {Object} processed - The processed response with thinkingSteps and answer
+     * @param {Object} processed - The processed response with thinking and answer
      * @returns {string} - The formatted response for display
      */
     function formatResponseForDisplay(processed) {
-        // Show parsing feedback if present
-        const feedback = getCoTParsingFeedback(processed);
-        let output = '';
-        if (feedback) {
-            output += feedback + '\n';
-        }
         if (!state.settings.enableCoT || !processed.hasStructuredResponse) {
-            output += processed.answer;
-            return output.trim();
+            return processed.answer;
         }
-        // If showThinking is enabled, show all reasoning steps and answer
+
+        // If showThinking is enabled, show both thinking and answer
         if (state.settings.showThinking) {
             if (processed.partial && processed.stage === 'thinking') {
-                // Show all current thinking steps
-                if (processed.steps && processed.steps.length > 0) {
-                    output += processed.steps.map((step, i) => `Step ${i+1}: ${step.text}`).join('\n---\n');
-                } else {
-                    output += '🤔 Thinking...';
-                }
+                return `Thinking: ${processed.thinking}`;
             } else if (processed.partial) {
-                output += processed.steps.map((step, i) => `Step ${i+1}: ${step.text}`).join('\n---\n');
+                return processed.thinking; // Just the partial thinking
             } else {
-                // Show all steps and final answer
-                if (processed.steps && processed.steps.length > 0) {
-                    output += processed.steps.map((step, i) => `Step ${i+1}: ${step.text}`).join('\n---\n') + '\n\n';
-                }
-                output += `Answer: ${processed.answer}`;
+                return `Thinking: ${processed.thinking}\n\nAnswer: ${processed.answer}`;
             }
         } else {
             // Otherwise just show the answer (or thinking indicator if answer isn't ready)
-            output += processed.answer || '🤔 Thinking...';
+            return processed.answer || '🤔 Thinking...';
         }
-        return output.trim();
     }
 
     // Helper: Validate user input
@@ -522,27 +371,30 @@ If you understand, follow these instructions for every relevant question. Do NOT
         return state.settings.enableCoT ? enhanceWithCoT(message) : message;
     }
 
-    // Refactored sendMessage with retry logic
-    async function sendMessage(messageOverride = null, retryCount = 0, maxRetries = 2) {
-        const message = messageOverride !== null ? messageOverride : UIController.getUserInput();
+    // Refactored sendMessage
+    async function sendMessage() {
+        const message = UIController.getUserInput();
         if (!isValidUserInput(message)) return;
-        if (retryCount === 0) {
-            state.originalUserQuestion = message;
-            state.toolWorkflowActive = true;
-            UIController.addMessage('user', message);
-        }
-        UIController.showStatus(retryCount > 0 ? `Retrying... (Attempt ${retryCount + 1})` : 'Sending message...');
+        state.originalUserQuestion = message;
+        state.toolWorkflowActive = true;
+
+        UIController.showStatus('Sending message...');
         setInputState(false);
+
         state.lastThinkingContent = '';
         state.lastAnswerContent = '';
-        if (retryCount === 0) UIController.clearUserInput();
+
+        UIController.addMessage('user', message);
+        UIController.clearUserInput();
+
         const enhancedMessage = prepareMessage(message);
         const currentSettings = SettingsController.getSettings();
         const selectedModel = currentSettings.selectedModel;
+
         try {
             if (selectedModel.startsWith('gpt')) {
-                if (retryCount === 0) state.chatHistory.push({ role: 'user', content: enhancedMessage });
-                console.log(`Sent enhanced message to GPT (attempt ${retryCount + 1}):`, enhancedMessage);
+                state.chatHistory.push({ role: 'user', content: enhancedMessage });
+                console.log("Sent enhanced message to GPT:", enhancedMessage);
                 await handleOpenAIMessage(selectedModel, enhancedMessage);
             } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
                 if (state.chatHistory.length === 0) {
@@ -551,45 +403,8 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 await handleGeminiMessage(selectedModel, enhancedMessage);
             }
         } catch (error) {
-            console.error(`Error sending message (attempt ${retryCount + 1}):`, error);
-            let userMsg = '';
-            if (error && error.userMessage) {
-                userMsg = error.userMessage;
-            } else if (error && error.message && error.message.toLowerCase().includes('timeout')) {
-                if (retryCount < maxRetries) {
-                    UIController.addMessage('ai', `⏰ Timeout occurred. Retrying... (Attempt ${retryCount + 2} of ${maxRetries + 1})`);
-                    await sendMessage(message, retryCount + 1, maxRetries);
-                    UIController.clearStatus();
-                    setInputState(true);
-                    return;
-                } else {
-                    userMsg = '⏰ The AI took too long to respond after multiple attempts.';
-                    UIController.addHtmlMessage('ai', `${userMsg} <button class="retry-btn" style="margin-left:10px;">Retry</button>`);
-                    setTimeout(() => {
-                        const retryBtn = document.querySelector('.retry-btn');
-                        if (retryBtn) {
-                            retryBtn.onclick = () => {
-                                retryBtn.disabled = true;
-                                sendMessage(message, 0, maxRetries);
-                            };
-                        }
-                    }, 100);
-                    UIController.clearStatus();
-                    setInputState(true);
-                    return;
-                }
-            } else if (error && error.message && (
-                error.message.includes('Failed to fetch') ||
-                error.message.includes('Service Unavailable') ||
-                error.message.includes('503') ||
-                error.message.includes('403')
-            )) {
-                userMsg = 'The Gemini API is currently unavailable or blocked. Please try again later.';
-                UIController.showStatus(userMsg);
-            } else {
-                userMsg = 'Error: ' + (error && error.message ? error.message : error);
-            }
-            UIController.addMessage('ai', userMsg);
+            console.error('Error sending message:', error);
+            UIController.addMessage('ai', 'Error: ' + error.message);
         } finally {
             Utils.updateTokenDisplay(state.totalTokens);
             UIController.clearStatus();
@@ -601,11 +416,9 @@ If you understand, follow these instructions for every relevant question. Do NOT
     async function handleStreamingResponse({ model, aiMsgElement, streamFn, onToolCall }) {
         let streamedResponse = '';
         try {
-            // Show status bar feedback instead of chat message
             if (state.settings.enableCoT) {
-                UIController.showStatus('AI is reasoning step by step...', 'info', { showProgress: true });
-            } else {
-                UIController.showStatus('AI is working...');
+                state.isThinking = true;
+                UIController.updateMessageContent(aiMsgElement, '🤔 Thinking...');
             }
             const fullReply = await streamFn(
                 model,
@@ -618,16 +431,15 @@ If you understand, follow these instructions for every relevant question. Do NOT
                             state.isThinking = false;
                         }
                         const displayText = formatResponseForDisplay(processed);
-                        UIController.updateMessageContent(aiMsgElement, displayText, 'ai');
+                        UIController.updateMessageContent(aiMsgElement, displayText);
                     } else {
-                        UIController.updateMessageContent(aiMsgElement, fullText, 'ai');
+                        UIController.updateMessageContent(aiMsgElement, fullText);
                     }
                 }
             );
             const toolCall = extractToolCall(fullReply);
             if (toolCall && toolCall.tool && toolCall.arguments) {
                 await onToolCall(toolCall);
-                UIController.clearStatus();
                 return;
             }
             if (state.settings.enableCoT) {
@@ -636,7 +448,7 @@ If you understand, follow these instructions for every relevant question. Do NOT
                     console.log('AI Thinking:', processed.thinking);
                 }
                 const displayText = formatResponseForDisplay(processed);
-                UIController.updateMessageContent(aiMsgElement, displayText, 'ai');
+                UIController.updateMessageContent(aiMsgElement, displayText);
                 state.chatHistory.push({ role: 'assistant', content: fullReply });
             } else {
                 state.chatHistory.push({ role: 'assistant', content: fullReply });
@@ -646,24 +458,15 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 state.totalTokens += tokenCount;
             }
         } catch (err) {
-            UIController.updateMessageContent(aiMsgElement, 'Error: ' + err.message, 'ai');
+            UIController.updateMessageContent(aiMsgElement, 'Error: ' + err.message);
             throw err;
         } finally {
             state.isThinking = false;
-            UIController.clearStatus();
         }
     }
 
-    async function handleNonStreamingResponse({ model, requestFn, onToolCall, aiMsgElement }) {
-        if (state.settings.enableCoT) {
-            UIController.showStatus('AI is reasoning step by step...', 'info', { showProgress: true });
-        } else {
-            UIController.showStatus('AI is working...');
-        }
-        // Ensure aiMsgElement is always defined
-        if (!aiMsgElement) {
-            aiMsgElement = UIController.createEmptyAIMessage();
-        }
+    async function handleNonStreamingResponse({ model, requestFn, onToolCall }) {
+        UIController.showStatus('Waiting for AI response...');
         try {
             const result = await requestFn(model, state.chatHistory);
             if (result.error) {
@@ -676,7 +479,6 @@ If you understand, follow these instructions for every relevant question. Do NOT
             const toolCall = extractToolCall(reply);
             if (toolCall && toolCall.tool && toolCall.arguments) {
                 await onToolCall(toolCall);
-                UIController.clearStatus();
                 return;
             }
             if (state.settings.enableCoT) {
@@ -686,15 +488,13 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 }
                 state.chatHistory.push({ role: 'assistant', content: reply });
                 const displayText = formatResponseForDisplay(processed);
-                UIController.updateMessageContent(aiMsgElement, displayText, 'ai');
+                UIController.addMessage('ai', displayText);
             } else {
                 state.chatHistory.push({ role: 'assistant', content: reply });
-                UIController.updateMessageContent(aiMsgElement, reply, 'ai');
+                UIController.addMessage('ai', reply);
             }
         } catch (err) {
             throw err;
-        } finally {
-            UIController.clearStatus();
         }
     }
 
@@ -734,7 +534,6 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 await processToolCall(toolCall);
                 return;
             }
-            const aiMsgElement = UIController.createEmptyAIMessage();
             if (state.settings.enableCoT) {
                 const processed = parseCoTResponse(textResponse);
                 if (processed.thinking) {
@@ -742,10 +541,10 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 }
                 state.chatHistory.push({ role: 'assistant', content: textResponse });
                 const displayText = formatResponseForDisplay(processed);
-                UIController.updateMessageContent(aiMsgElement, displayText, 'ai');
+                UIController.addMessage('ai', displayText);
             } else {
                 state.chatHistory.push({ role: 'assistant', content: textResponse });
-                UIController.updateMessageContent(aiMsgElement, textResponse, 'ai');
+                UIController.addMessage('ai', textResponse);
             }
         } catch (err) {
             throw err;
@@ -778,26 +577,348 @@ If you understand, follow these instructions for every relevant question. Do NOT
         }
         if (state.lastToolCallCount > state.MAX_TOOL_CALL_REPEAT) {
             UIController.addMessage('ai', `Error: Tool call loop detected. The same tool call has been made more than ${state.MAX_TOOL_CALL_REPEAT} times in a row. Stopping to prevent infinite loop.`);
+            return;
         }
-        // ... (rest of processToolCall logic, if any)
+        // Log tool call
+        state.toolCallHistory.push({ tool, args, timestamp: new Date().toISOString() });
+        await toolHandlers[tool](args);
+        // Only continue reasoning if the last AI reply was NOT a tool call
+        if (!skipContinue) {
+            const lastEntry = state.chatHistory[state.chatHistory.length - 1];
+            let isToolCall = false;
+            if (lastEntry && typeof lastEntry.content === 'string') {
+                try {
+                    const parsed = JSON.parse(lastEntry.content);
+                    if (parsed.tool && parsed.arguments) {
+                        isToolCall = true;
+                    }
+                } catch {}
+            }
+            if (!isToolCall) {
+                const selectedModel = SettingsController.getSettings().selectedModel;
+                if (selectedModel.startsWith('gpt')) {
+                    await handleOpenAIMessage(selectedModel, '');
+                } else {
+                    await handleGeminiMessage(selectedModel, '');
+                }
+            } else {
+                UIController.addMessage('ai', 'Warning: AI outputted another tool call without reasoning. Stopping to prevent infinite loop.');
+            }
+        }
     }
 
-    // Expose public API
+    /**
+     * Gets the current chat history
+     * @returns {Array} - The chat history
+     */
+    function getChatHistory() {
+        return [...state.chatHistory];
+    }
+
+    /**
+     * Gets the total tokens used
+     * @returns {number} - The total tokens used
+     */
+    function getTotalTokens() {
+        return state.totalTokens;
+    }
+
+    // Helper: AI-driven deep reading for a URL
+    async function deepReadUrl(url, maxChunks = 5, chunkSize = 2000, maxTotalLength = 10000) {
+        let allChunks = [];
+        let start = 0;
+        let shouldContinue = true;
+        let chunkCount = 0;
+        let totalLength = 0;
+        while (shouldContinue && chunkCount < maxChunks && totalLength < maxTotalLength) {
+            // Check cache first
+            const cacheKey = `${url}:${start}:${chunkSize}`;
+            let snippet;
+            if (state.readCache.has(cacheKey)) {
+                snippet = state.readCache.get(cacheKey);
+            } else {
+                await processToolCall({ tool: 'read_url', arguments: { url, start, length: chunkSize }, skipContinue: true });
+                // Find the last snippet added to chatHistory
+                const lastEntry = state.chatHistory[state.chatHistory.length - 1];
+                if (lastEntry && typeof lastEntry.content === 'string' && lastEntry.content.startsWith('Read content from')) {
+                    snippet = lastEntry.content.split('\n').slice(1).join('\n');
+                    state.readCache.set(cacheKey, snippet);
+                } else {
+                    snippet = '';
+                }
+            }
+            if (!snippet) break;
+            allChunks.push(snippet);
+            totalLength += snippet.length;
+            // Ask AI if more is needed
+            const selectedModel = SettingsController.getSettings().selectedModel;
+            let aiReply = '';
+            try {
+                const prompt = `Given the following snippet from ${url}, do you need more content to answer the user's question? Please reply with \"YES\" or \"NO\" and a brief reason. If YES, estimate how many more characters you need.\n\nSnippet:\n${snippet}`;
+                if (selectedModel.startsWith('gpt')) {
+                    const res = await ApiService.sendOpenAIRequest(selectedModel, [
+                        { role: 'system', content: 'You are an assistant that decides if more content is needed from a web page.' },
+                        { role: 'user', content: prompt }
+                    ]);
+                    aiReply = res.choices[0].message.content.trim().toLowerCase();
+                }
+            } catch (err) {
+                // On error, stop deep reading
+                shouldContinue = false;
+                break;
+            }
+            if (aiReply.startsWith('yes') && totalLength < maxTotalLength) {
+                start += chunkSize;
+                chunkCount++;
+                shouldContinue = true;
+            } else {
+                shouldContinue = false;
+            }
+        }
+        return allChunks;
+    }
+
+    // Autonomous follow-up: after AI suggests which results to read, auto-read and summarize
+    async function autoReadAndSummarizeFromSuggestion(aiReply) {
+        debugLog('autoReadAndSummarizeFromSuggestion', aiReply);
+        if (state.autoReadInProgress) return; // Prevent overlap
+        if (!state.lastSearchResults || !Array.isArray(state.lastSearchResults) || !state.lastSearchResults.length) return;
+        // Parse numbers from AI reply (e.g., "3,5,7,9,10")
+        const match = aiReply.match(/([\d, ]+)/);
+        if (!match) return;
+        const nums = match[1].split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+        if (!nums.length) return;
+        // Store highlighted indices (0-based)
+        state.highlightedResultIndices = new Set(nums.map(n => n - 1));
+        // Map numbers to URLs (1-based index)
+        const urlsToRead = nums.map(n => state.lastSearchResults[n-1]?.url).filter(Boolean);
+        debugLog({ step: 'autoReadAndSummarizeFromSuggestion', selectedUrls: urlsToRead });
+        if (!urlsToRead.length) return;
+        state.autoReadInProgress = true;
+        try {
+            for (let i = 0; i < urlsToRead.length; i++) {
+                const url = urlsToRead[i];
+                UIController.showSpinner(`Reading ${i + 1} of ${urlsToRead.length} URLs: ${url}...`);
+                await deepReadUrl(url, 5, 2000);
+            }
+            // After all reads, auto-summarize
+            await summarizeSnippets();
+        } finally {
+            state.autoReadInProgress = false;
+        }
+    }
+
+    // Suggestion logic: ask AI which results to read
+    async function suggestResultsToRead(results, query) {
+        debugLog('suggestResultsToRead', { results, query });
+        if (!results || results.length === 0) return;
+        const prompt = `Given these search results for the query: "${query}", which results (by number) are most relevant to read in detail?\n\n${results.map((r, i) => `${i+1}. ${r.title} - ${r.snippet}`).join('\n')}\n\nReply with a comma-separated list of result numbers.`;
+        const selectedModel = SettingsController.getSettings().selectedModel;
+        let aiReply = '';
+        try {
+            if (selectedModel.startsWith('gpt')) {
+                const res = await ApiService.sendOpenAIRequest(selectedModel, [
+                    { role: 'system', content: 'You are an assistant helping to select the most relevant search results.' },
+                    { role: 'user', content: prompt }
+                ]);
+                aiReply = res.choices[0].message.content.trim();
+            } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
+                const session = ApiService.createGeminiSession(selectedModel);
+                const chatHistory = [
+                    { role: 'system', content: 'You are an assistant helping to select the most relevant search results.' },
+                    { role: 'user', content: prompt }
+                ];
+                const result = await session.sendMessage(prompt, chatHistory);
+                const candidate = result.candidates[0];
+                if (candidate.content.parts) {
+                    aiReply = candidate.content.parts.map(p => p.text).join(' ').trim();
+                } else if (candidate.content.text) {
+                    aiReply = candidate.content.text.trim();
+                }
+            }
+            // Optionally, parse and highlight suggested results
+            if (aiReply) {
+                UIController.addMessage('ai', `AI suggests reading results: ${aiReply}`);
+                // Autonomous follow-up: auto-read and summarize
+                await autoReadAndSummarizeFromSuggestion(aiReply);
+            }
+        } catch (err) {
+            // Ignore suggestion errors
+        }
+    }
+
+    // Helper: Split array of strings into batches where each batch's total length <= maxLen
+    function splitIntoBatches(snippets, maxLen) {
+        const batches = [];
+        let currentBatch = [];
+        let currentLen = 0;
+        for (const snippet of snippets) {
+            if (currentLen + snippet.length > maxLen && currentBatch.length) {
+                batches.push(currentBatch);
+                currentBatch = [];
+                currentLen = 0;
+            }
+            currentBatch.push(snippet);
+            currentLen += snippet.length;
+        }
+        if (currentBatch.length) {
+            batches.push(currentBatch);
+        }
+        return batches;
+    }
+
+    // Summarization logic (recursive, context-aware)
+    async function summarizeSnippets(snippets = null, round = 1) {
+        debugLog('summarizeSnippets', { snippets, round });
+        if (!snippets) snippets = state.readSnippets;
+        if (!snippets.length) return;
+        const selectedModel = SettingsController.getSettings().selectedModel;
+        const MAX_PROMPT_LENGTH = 5857; // chars, safe for most models
+        const SUMMARIZATION_TIMEOUT = 88000; // 88 seconds
+        // If only one snippet, just summarize it directly
+        if (snippets.length === 1) {
+            const prompt = `Summarize the following information extracted from web pages (be as concise as possible):\n\n${snippets[0]}`;
+            let aiReply = '';
+            UIController.showSpinner(`Round ${round}: Summarizing information...`);
+            UIController.showStatus(`Round ${round}: Summarizing information...`);
+            try {
+                if (selectedModel.startsWith('gpt')) {
+                    const res = await ApiService.sendOpenAIRequest(selectedModel, [
+                        { role: 'system', content: 'You are an assistant that synthesizes information from multiple sources.' },
+                        { role: 'user', content: prompt }
+                    ], SUMMARIZATION_TIMEOUT);
+                    aiReply = res.choices[0].message.content.trim();
+                } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
+                    const session = ApiService.createGeminiSession(selectedModel);
+                    const chatHistory = [
+                        { role: 'system', content: 'You are an assistant that synthesizes information from multiple sources.' },
+                        { role: 'user', content: prompt }
+                    ];
+                    const result = await session.sendMessage(prompt, chatHistory);
+                    const candidate = result.candidates[0];
+                    if (candidate.content.parts) {
+                        aiReply = candidate.content.parts.map(p => p.text).join(' ').trim();
+                    } else if (candidate.content.text) {
+                        aiReply = candidate.content.text.trim();
+                    }
+                }
+                if (aiReply) {
+                    UIController.addMessage('ai', `Summary:\n${aiReply}`);
+                }
+            } catch (err) {
+                UIController.addMessage('ai', `Summarization failed. Error: ${err && err.message ? err.message : err}`);
+            }
+            UIController.hideSpinner();
+            UIController.clearStatus();
+            state.readSnippets = [];
+            // Prompt for final answer after summary
+            await synthesizeFinalAnswer(aiReply);
+            return;
+        }
+        // Otherwise, split into batches
+        const batches = splitIntoBatches(snippets, MAX_PROMPT_LENGTH);
+        let batchSummaries = [];
+        const totalBatches = batches.length;
+        try {
+            for (let i = 0; i < totalBatches; i++) {
+                const batch = batches[i];
+                UIController.showSpinner(`Round ${round}: Summarizing batch ${i + 1} of ${totalBatches}...`);
+                UIController.showStatus(`Round ${round}: Summarizing batch ${i + 1} of ${totalBatches}...`);
+                const batchPrompt = `Summarize the following information extracted from web pages (be as concise as possible):\n\n${batch.join('\n---\n')}`;
+                let batchReply = '';
+                if (selectedModel.startsWith('gpt')) {
+                    const res = await ApiService.sendOpenAIRequest(selectedModel, [
+                        { role: 'system', content: 'You are an assistant that synthesizes information from multiple sources.' },
+                        { role: 'user', content: batchPrompt }
+                    ], SUMMARIZATION_TIMEOUT);
+                    batchReply = res.choices[0].message.content.trim();
+                } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
+                    const session = ApiService.createGeminiSession(selectedModel);
+                    const chatHistory = [
+                        { role: 'system', content: 'You are an assistant that synthesizes information from multiple sources.' },
+                        { role: 'user', content: batchPrompt }
+                    ];
+                    const result = await session.sendMessage(batchPrompt, chatHistory);
+                    const candidate = result.candidates[0];
+                    if (candidate.content.parts) {
+                        batchReply = candidate.content.parts.map(p => p.text).join(' ').trim();
+                    } else if (candidate.content.text) {
+                        batchReply = candidate.content.text.trim();
+                    }
+                }
+                batchSummaries.push(batchReply);
+            }
+            // If the combined summaries are still too long, recursively summarize
+            const combined = batchSummaries.join('\n---\n');
+            if (combined.length > MAX_PROMPT_LENGTH) {
+                UIController.showSpinner(`Round ${round + 1}: Combining summaries...`);
+                UIController.showStatus(`Round ${round + 1}: Combining summaries...`);
+                await summarizeSnippets(batchSummaries, round + 1);
+            } else {
+                UIController.showSpinner(`Round ${round}: Finalizing summary...`);
+                UIController.showStatus(`Round ${round}: Finalizing summary...`);
+                UIController.addMessage('ai', `Summary:\n${combined}`);
+                // Prompt for final answer after all summaries
+                await synthesizeFinalAnswer(combined);
+            }
+        } catch (err) {
+            UIController.addMessage('ai', `Summarization failed. Error: ${err && err.message ? err.message : err}`);
+        }
+        UIController.hideSpinner();
+        UIController.clearStatus();
+        state.readSnippets = [];
+    }
+
+    // Add synthesizeFinalAnswer helper
+    async function synthesizeFinalAnswer(summaries) {
+        debugLog('synthesizeFinalAnswer', summaries);
+        if (!summaries || !state.originalUserQuestion) return;
+        const selectedModel = SettingsController.getSettings().selectedModel;
+        const prompt = `Based on the following summaries, provide a final, concise answer to the original question.\n\nSummaries:\n${summaries}\n\nOriginal question: ${state.originalUserQuestion}`;
+        try {
+            let finalAnswer = '';
+            if (selectedModel.startsWith('gpt')) {
+                const res = await ApiService.sendOpenAIRequest(selectedModel, [
+                    { role: 'system', content: 'You are an assistant that synthesizes information from multiple sources and provides a final answer.' },
+                    { role: 'user', content: prompt }
+                ]);
+                finalAnswer = res.choices[0].message.content.trim();
+            } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
+                const session = ApiService.createGeminiSession(selectedModel);
+                const chatHistory = [
+                    { role: 'system', content: 'You are an assistant that synthesizes information from multiple sources and provides a final answer.' },
+                    { role: 'user', content: prompt }
+                ];
+                const result = await session.sendMessage(prompt, chatHistory);
+                const candidate = result.candidates[0];
+                if (candidate.content.parts) {
+                    finalAnswer = candidate.content.parts.map(p => p.text).join(' ').trim();
+                } else if (candidate.content.text) {
+                    finalAnswer = candidate.content.text.trim();
+                }
+            }
+            debugLog({ step: 'synthesizeFinalAnswer', finalAnswer });
+            if (finalAnswer) {
+                UIController.addMessage('ai', `Final Answer:\n${finalAnswer}`);
+            }
+            // Stop tool workflow after final answer
+            state.toolWorkflowActive = false;
+        } catch (err) {
+            UIController.addMessage('ai', `Final answer synthesis failed. Error: ${err && err.message ? err.message : err}`);
+            state.toolWorkflowActive = false;
+        }
+    }
+
+    // Public API
     return {
         init,
         updateSettings,
-        clearChat,
         getSettings,
-        enhanceWithCoT,
-        parseCoTResponse,
-        getCoTParsingFeedback,
-        formatResponseForDisplay,
-        isValidUserInput,
-        setInputState,
-        prepareMessage,
         sendMessage,
-        handleOpenAIMessage,
-        handleGeminiMessage,
-        processToolCall
+        getChatHistory,
+        getTotalTokens,
+        clearChat,
+        processToolCall,
+        getToolCallHistory: () => [...state.toolCallHistory],
     };
-})();
+})(); 

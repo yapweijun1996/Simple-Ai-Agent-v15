@@ -16,10 +16,6 @@ const UIController = (function() {
     
     let summarizeBtn = null;
     
-    // Helper to manage search result groups
-    let currentSearchGroup = null;
-    let searchGroupCount = 0;
-    
     /**
      * Initializes the UI controller
      */
@@ -50,8 +46,6 @@ const UIController = (function() {
         if (sendButton) {
             sendButton.disabled = messageInput.value.trim().length === 0;
         }
-        // Autofocus message input on init
-        setTimeout(() => { messageInput.focus(); }, 0);
         
         // Add global event delegation for thinking toggle buttons
         document.addEventListener('click', function(event) {
@@ -158,7 +152,7 @@ const UIController = (function() {
         }
         
         // Format the message text
-        updateMessageContent(messageElement, text, sender);
+        updateMessageContent(messageElement, text);
         
         // Add to chat window and scroll into view
         chatWindow.appendChild(messageElement);
@@ -180,9 +174,8 @@ const UIController = (function() {
      * Updates the content of a message element
      * @param {Element} messageElement - The message element to update
      * @param {string} text - The new text content
-     * @param {string} sender - The sender ('user' or 'ai')
      */
-    function updateMessageContent(messageElement, text, sender) {
+    function updateMessageContent(messageElement, text) {
         if (!messageElement) return;
         const contentElement = messageElement.querySelector('.chat-app__message-content');
         if (!contentElement) return;
@@ -190,15 +183,10 @@ const UIController = (function() {
         const existingToggle = messageElement.querySelector('.toggle-thinking');
         if (existingToggle) existingToggle.remove();
         if (text === '🤔 Thinking...') {
-            // Do not display anything for thinking in the chat window
+            setThinkingIndicator(contentElement);
             return;
         }
-        if (sender === 'ai' && window.marked) {
-            contentElement.className = 'chat-app__message-content';
-            contentElement.innerHTML = marked.parse(text);
-        } else {
-            setFormattedContent(contentElement, text);
-        }
+        setFormattedContent(contentElement, text);
         addToggleButton(messageElement, text);
     }
 
@@ -278,7 +266,6 @@ const UIController = (function() {
         const messageInput = document.getElementById('message-input');
         messageInput.value = '';
         messageInput.style.height = 'auto'; // Reset height
-        focusMessageInput(); // Refocus after clearing
     }
 
     /**
@@ -289,65 +276,112 @@ const UIController = (function() {
         const chatWindow = document.getElementById('chat-window');
         const messageElement = Utils.createFromTemplate('message-template');
         messageElement.classList.add('ai-message');
-        // No placeholder content
+        
+        const contentElement = messageElement.querySelector('.chat-app__message-content');
+        contentElement.innerHTML = '<span class="thinking-indicator">Thinking...</span>'; // Placeholder
+        
         chatWindow.appendChild(messageElement);
         messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        
         return messageElement;
     }
 
-    /**
-     * Shows a status message in the status bar (plain text, no icon, no spinner)
-     * @param {string} message - The status message
-     * @param {string} [type] - Ignored, always plain text
-     * @param {Object} [options] - Ignored
-     */
-    function showStatus(message, type = 'info', options = {}) {
+    // Add status bar control methods
+    function showStatus(message) {
         const bar = document.getElementById('status-bar');
-        if (!bar) return;
-        // Remove previous close button if any
-        const prevClose = bar.querySelector('.status-bar__close');
-        if (prevClose) prevClose.remove();
-        // Reset ARIA
-        bar.removeAttribute('role');
-        bar.setAttribute('aria-live', 'polite');
-        // Only show plain text
-        bar.textContent = message;
-        bar.classList.add('chat-app__status-bar--active');
-        bar.style.visibility = '';
-        // Show progress bar if requested
-        if (options.showProgress) {
-            showProgressBar();
-        } else {
-            hideProgressBar();
+        if (bar) {
+            bar.textContent = message;
+            bar.style.visibility = 'visible';
         }
-    }
-
-    function showProgressBar() {
-        const progress = document.querySelector('.status-bar__progress');
-        if (progress) progress.style.display = 'block';
-    }
-    function hideProgressBar() {
-        const progress = document.querySelector('.status-bar__progress');
-        if (progress) progress.style.display = 'none';
     }
 
     function clearStatus() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = '';
-            bar.classList.remove('chat-app__status-bar--active');
-            bar.removeAttribute('role');
-            bar.setAttribute('aria-live', 'polite');
-            bar.style.visibility = '';
+            bar.style.visibility = 'hidden';
         }
-        hideProgressBar();
     }
 
-    // Spinner for progress feedback (just show plain text)
+    // Spinner for progress feedback
     function showSpinner(message) {
-        showStatus(message);
+        const bar = document.getElementById('status-bar');
+        if (bar) {
+            bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message}`;
+            bar.style.visibility = 'visible';
+        }
     }
-    function hideSpinner() { clearStatus(); }
+    function hideSpinner() {
+        const bar = document.getElementById('status-bar');
+        if (bar) {
+            bar.innerHTML = '';
+            bar.style.visibility = 'hidden';
+        }
+    }
+
+    /**
+     * Adds a search result to the chat window with a 'Read More' button
+     * @param {Object} result - {title, url, snippet}
+     * @param {Function} onReadMore - Callback when 'Read More' is clicked
+     */
+    function addSearchResult(result, onReadMore) {
+        if (shownUrls.has(result.url)) return;
+        shownUrls.add(result.url);
+        const chatWindow = document.getElementById('chat-window');
+        const article = document.createElement('article');
+        article.className = 'chat-app__message ai-message search-result';
+        // Improved card structure
+        const card = document.createElement('div');
+        card.className = 'search-result-card';
+        // Header with icon and link
+        const header = document.createElement('div');
+        header.className = 'search-result-header';
+        header.innerHTML = `<span class="search-result-icon" aria-hidden="true">🔍</span><a href="${result.url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(result.title)}</a>`;
+        card.appendChild(header);
+        // URL
+        const urlDiv = document.createElement('div');
+        urlDiv.className = 'search-result-url';
+        urlDiv.innerHTML = `<a href="${result.url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(result.url)}</a>`;
+        card.appendChild(urlDiv);
+        // Snippet
+        const snippetDiv = document.createElement('div');
+        snippetDiv.className = 'search-result-snippet';
+        snippetDiv.textContent = result.snippet;
+        card.appendChild(snippetDiv);
+        article.appendChild(card);
+        chatWindow.appendChild(article);
+        article.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    /**
+     * Adds a read_url result to the chat window, with optional 'Read More' if more content is available
+     * @param {string} url
+     * @param {string} snippet
+     * @param {boolean} hasMore
+     */
+    function addReadResult(url, snippet, hasMore) {
+        urlOffsets.set(url, (urlOffsets.get(url) || 0) + snippet.length);
+        const chatWindow = document.getElementById('chat-window');
+        const article = document.createElement('article');
+        article.className = 'chat-app__message ai-message read-result';
+        // Improved card structure
+        const card = document.createElement('div');
+        card.className = 'read-result-card';
+        // Header with icon and link
+        const header = document.createElement('div');
+        header.className = 'read-result-header';
+        header.innerHTML = `<span class="read-result-icon" aria-hidden="true">🔗</span><a href="${url}" target="_blank" rel="noopener noreferrer" tabindex="0">Source</a>`;
+        card.appendChild(header);
+        // Snippet with fade if long
+        const snippetDiv = document.createElement('div');
+        snippetDiv.className = 'read-result-snippet';
+        snippetDiv.textContent = snippet + (hasMore ? '...' : '');
+        if (snippet.length > 600 || hasMore) snippetDiv.classList.add('faded');
+        card.appendChild(snippetDiv);
+        article.appendChild(card);
+        chatWindow.appendChild(article);
+        article.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
 
     /**
      * Shows an empty state message in the chat window
@@ -369,50 +403,45 @@ const UIController = (function() {
     }
 
     /**
-     * Show error feedback in the status bar (plain text only)
+     * Show error feedback in the status bar (with ARIA live region)
      */
     function showError(message) {
-        showStatus(message);
+        const bar = document.getElementById('status-bar');
+        if (bar) {
+            bar.textContent = message;
+            bar.style.visibility = 'visible';
+            bar.setAttribute('role', 'alert');
+            bar.setAttribute('aria-live', 'assertive');
+            setTimeout(() => {
+                bar.textContent = '';
+                bar.style.visibility = 'hidden';
+                bar.removeAttribute('role');
+                bar.removeAttribute('aria-live');
+            }, 3000);
+        }
     }
 
     // Helper: Format message content (code blocks and CoT reasoning)
     function formatMessageContent(text) {
         // Escape HTML first
         let escapedText = escapeHtml(text);
-        // Show warning if present
-        let warningHtml = '';
-        if (escapedText.startsWith('⚠️')) {
-            const lines = escapedText.split('<br>');
-            warningHtml = `<div class="cot-warning">${lines[0]}</div>`;
-            escapedText = lines.slice(1).join('<br>');
-        }
-        // Format multi-step reasoning (Step 1:, Step 2:, ...)
-        let formattedText = escapedText;
-        // New: check for structured steps array in processed response
-        if (typeof text === 'object' && text.steps && Array.isArray(text.steps) && text.steps.length > 0) {
-            // Icon and color for each step type
-            const typeMeta = {
-                'Fact':   { icon: '📄', color: '#4f8cff' },
-                'Assumption': { icon: '💡', color: '#ffb347' },
-                'Action': { icon: '⚙️', color: '#4caf50' },
-                'Decision': { icon: '✅', color: '#ff5c5c' },
-                'Step':   { icon: '🔎', color: '#b0b0b0' }
-            };
-            // Render steps as a timeline/stepper
-            formattedText = `<div class=\"cot-reasoning-stepper\" role=\"list\" aria-label=\"AI reasoning steps\" style=\"display:block;\">\n                <ol class=\"cot-steps-timeline\">` + text.steps.map(step => {
-                const meta = typeMeta[step.type] || typeMeta['Step'];
-                return `<li class=\"cot-step-item\" data-type=\"${step.type}\" role=\"listitem\" style=\"border-left: 4px solid ${meta.color}; margin-bottom: 1em; padding-left: 1em; position: relative;\">\n                    <span class=\"cot-step-icon\" aria-hidden=\"true\" style=\"position: absolute; left: -1.5em; top: 0; font-size: 1.2em; color: ${meta.color};\">${meta.icon}</span>\n                    <span class=\"cot-step-number\" style=\"font-weight: bold; color: ${meta.color};\">Step ${step.number}</span>\n                    <span class="cot-step-type\" style=\"margin-left: 0.5em; color: ${meta.color};\">[${step.type}]</span>:\n                    <span class=\"cot-step-text\">${escapeHtml(step.text)}</span><br>\n                    <span class=\"cot-step-summary\" style=\"color: #888;\"><em>Summary:</em> ${escapeHtml(step.summary)}</span>\n                </li>`;
-            }).join('') + '</ol></div>';
-            if (text.answer) {
-                formattedText += `<div class="answer-section" style="margin-top:1em;"><strong>Final Answer:</strong><br>${escapeHtml(text.answer).replace(/\n/g, '<br>')}</div>`;
+        // Replace newlines with <br>
+        let formattedText = escapedText.replace(/\n/g, '<br>');
+        // Highlight CoT reasoning if present
+        if (text.includes('Thinking:') && text.includes('Answer:')) {
+            const thinkingMatch = text.match(/Thinking:(.*?)(?=Answer:|$)/s);
+            const answerMatch = text.match(/Answer:(.*?)$/s);
+            if (thinkingMatch && answerMatch) {
+                const thinkingContent = escapeHtml(thinkingMatch[1].trim());
+                const answerContent = escapeHtml(answerMatch[1].trim());
+                formattedText = `<div class="thinking-section"><strong>Thinking:</strong><br>${thinkingContent.replace(/\n/g, '<br>')}</div>\n<div class="answer-section"><strong>Answer:</strong><br>${answerContent.replace(/\n/g, '<br>')}</div>`;
             }
-            return warningHtml + formattedText;
         }
         // Format code blocks
         if (text.includes('```')) {
             formattedText = formatCodeBlocks(text);
         }
-        return warningHtml + formattedText;
+        return formattedText;
     }
 
     // Helper: Set thinking indicator
@@ -429,208 +458,14 @@ const UIController = (function() {
 
     // Helper: Add toggle button for CoT responses
     function addToggleButton(messageElement, text) {
-        // Show toggle if any reasoning/answer block is present
-        const hasReasoning = /Thinking:|Reasoning:|cot-reasoning/.test(text);
-        const hasAnswer = /Answer:|Conclusion:|Final Answer/.test(text);
-        if (hasReasoning && hasAnswer && messageElement.classList.contains('ai-message')) {
+        if (text.includes('Thinking:') && text.includes('Answer:') && messageElement.classList.contains('ai-message')) {
             const toggleButton = document.createElement('button');
             toggleButton.className = 'toggle-thinking';
-            toggleButton.textContent = 'Show thinking';
-            toggleButton.setAttribute('data-expanded', 'false');
-            toggleButton.setAttribute('title', "Show or hide the AI's step-by-step reasoning process");
-            // Collapse reasoning by default
-            messageElement.classList.add('thinking-collapsed');
-            // Insert toggle after message content
-            const contentElem = messageElement.querySelector('.chat-app__message-content');
-            contentElem.parentNode.insertBefore(toggleButton, contentElem.nextSibling);
-            // Add info icon with tooltip
-            const infoIcon = document.createElement('span');
-            infoIcon.className = 'cot-info-icon';
-            infoIcon.innerHTML = 'ℹ️';
-            infoIcon.setAttribute('tabindex', '0');
-            infoIcon.setAttribute('title', "Click 'Show thinking' to see the AI's step-by-step reasoning. This can help you understand how the answer was reached.");
-            toggleButton.parentNode.insertBefore(infoIcon, toggleButton.nextSibling);
+            toggleButton.textContent = 'Hide thinking';
+            toggleButton.setAttribute('data-expanded', 'true');
+            messageElement.querySelector('.chat-app__message-content').parentNode.insertBefore(toggleButton, messageElement.querySelector('.chat-app__message-content').nextSibling);
         }
     }
-
-    /**
-     * Adds a search result to the chat window with a 'Show/Hide search results' toggle
-     * @param {Object} result - {title, url, snippet}
-     * @param {Function} onReadMore - Callback when 'Read More' is clicked (optional)
-     */
-    function addSearchResult(result, onReadMore) {
-        if (shownUrls.has(result.url)) return;
-        shownUrls.add(result.url);
-        const chatWindow = document.getElementById('chat-window');
-
-        // If no current group or last group is full, create a new group
-        if (!currentSearchGroup || currentSearchGroup.dataset.closed === 'true') {
-            searchGroupCount++;
-            // Create group container
-            const groupContainer = document.createElement('div');
-            groupContainer.className = 'search-result-group';
-            groupContainer.style.margin = '12px 0';
-            groupContainer.style.border = '1px solid var(--border-color, #333)';
-            groupContainer.style.borderRadius = '8px';
-            groupContainer.style.background = 'var(--background-secondary, #181a20)';
-            groupContainer.style.overflow = 'hidden';
-            groupContainer.style.padding = '0';
-            groupContainer.dataset.closed = 'false';
-
-            // Toggle button
-            const toggleBtn = document.createElement('button');
-            toggleBtn.className = 'search-result-toggle-btn';
-            toggleBtn.textContent = 'Show search results';
-            toggleBtn.setAttribute('aria-expanded', 'false');
-            toggleBtn.style.display = 'block';
-            toggleBtn.style.width = '100%';
-            toggleBtn.style.padding = '8px 0';
-            toggleBtn.style.background = 'var(--background-tertiary, #23262f)';
-            toggleBtn.style.border = 'none';
-            toggleBtn.style.cursor = 'pointer';
-            toggleBtn.style.fontWeight = 'bold';
-            toggleBtn.style.fontSize = '1em';
-            toggleBtn.style.color = 'var(--primary-color, #fff)';
-            toggleBtn.addEventListener('click', function() {
-                const isClosed = groupContainer.dataset.closed === 'true';
-                groupContainer.dataset.closed = isClosed ? 'false' : 'true';
-                resultsWrapper.style.display = isClosed ? '' : 'none';
-                toggleBtn.textContent = isClosed ? 'Hide search results' : 'Show search results';
-                toggleBtn.setAttribute('aria-expanded', isClosed ? 'true' : 'false');
-            });
-
-            // Results wrapper (hidden by default)
-            const resultsWrapper = document.createElement('div');
-            resultsWrapper.className = 'search-results-wrapper';
-            resultsWrapper.style.display = 'none';
-            groupContainer.appendChild(toggleBtn);
-            groupContainer.appendChild(resultsWrapper);
-            chatWindow.appendChild(groupContainer);
-            currentSearchGroup = groupContainer;
-        }
-
-        // Add the search result article to the current group
-        const resultsWrapper = currentSearchGroup.querySelector('.search-results-wrapper');
-        const article = document.createElement('article');
-        article.className = 'chat-app__message ai-message search-result';
-        // Card structure
-        const card = document.createElement('div');
-        card.className = 'search-result-card';
-        // Header with icon and link
-        const header = document.createElement('div');
-        header.className = 'search-result-header';
-        header.innerHTML = `<span class="search-result-icon" aria-hidden="true">🔍</span><a href="${result.url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(result.title)}</a>`;
-        card.appendChild(header);
-        // URL
-        const urlDiv = document.createElement('div');
-        urlDiv.className = 'search-result-url';
-        urlDiv.innerHTML = `<a href="${result.url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(result.url)}</a>`;
-        card.appendChild(urlDiv);
-        // Snippet
-        const snippetDiv = document.createElement('div');
-        snippetDiv.className = 'search-result-snippet';
-        snippetDiv.textContent = result.snippet;
-        card.appendChild(snippetDiv);
-        // Removed: Read More button
-        article.appendChild(card);
-        resultsWrapper.appendChild(article);
-        article.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-
-    /**
-     * Adds a read result to the chat window, with optional 'Read More' button
-     * @param {string} url - The URL that was read
-     * @param {string} snippet - The snippet of text read from the URL
-     * @param {boolean} hasMore - Whether there is more content to read
-     */
-    function addReadResult(url, snippet, hasMore) {
-        // Deduplicate by URL
-        if (shownUrls.has(url)) return;
-        shownUrls.add(url);
-        const chatWindow = document.getElementById('chat-window');
-        const article = document.createElement('article');
-        article.className = 'chat-app__message ai-message read-result';
-        // Card structure
-        const card = document.createElement('div');
-        card.className = 'read-result-card';
-        // Header with icon and link
-        const header = document.createElement('div');
-        header.className = 'read-result-header';
-        header.innerHTML = `<span class="read-result-icon" aria-hidden="true">📖</span><a href="${url}" target="_blank" rel="noopener noreferrer" tabindex="0">${Utils.escapeHtml(url)}</a>`;
-        card.appendChild(header);
-        // Snippet
-        const snippetDiv = document.createElement('div');
-        snippetDiv.className = 'read-result-snippet';
-        snippetDiv.textContent = snippet;
-        card.appendChild(snippetDiv);
-        // Removed: Read More button
-        article.appendChild(card);
-        chatWindow.appendChild(article);
-        article.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-
-    /**
-     * Focuses the message input field
-     */
-    function focusMessageInput() {
-        const messageInput = document.getElementById('message-input');
-        if (messageInput) messageInput.focus();
-    }
-
-    // Helper: Show loading in search results group
-    function showSearchResultsLoading() {
-        const chatWindow = document.getElementById('chat-window');
-        // Find or create the group
-        let groupContainer = chatWindow.querySelector('.search-result-group');
-        if (!groupContainer) {
-            groupContainer = document.createElement('div');
-            groupContainer.className = 'search-result-group';
-            groupContainer.style.margin = '12px 0';
-            groupContainer.style.border = '1px solid var(--border-color, #333)';
-            groupContainer.style.borderRadius = '8px';
-            groupContainer.style.background = 'var(--background-secondary, #181a20)';
-            groupContainer.style.overflow = 'hidden';
-            groupContainer.style.padding = '0';
-            groupContainer.dataset.closed = 'false';
-            chatWindow.appendChild(groupContainer);
-        }
-        let resultsWrapper = groupContainer.querySelector('.search-results-wrapper');
-        if (!resultsWrapper) {
-            resultsWrapper = document.createElement('div');
-            resultsWrapper.className = 'search-results-wrapper';
-            groupContainer.appendChild(resultsWrapper);
-        }
-        resultsWrapper.style.display = '';
-        resultsWrapper.innerHTML = '<div class="search-loading-indicator" style="padding: 24px; text-align: center; color: var(--primary-color); font-size: 1.1em;"><span class="spinner" style="margin-right:8px;"></span>Loading search results...</div>';
-        // Hide toggle if present
-        const toggleBtn = groupContainer.querySelector('.search-result-toggle-btn');
-        if (toggleBtn) toggleBtn.style.display = 'none';
-    }
-
-    // Helper: Hide loading in search results group
-    function hideSearchResultsLoading() {
-        const chatWindow = document.getElementById('chat-window');
-        const groupContainer = chatWindow.querySelector('.search-result-group');
-        if (!groupContainer) return;
-        const resultsWrapper = groupContainer.querySelector('.search-results-wrapper');
-        if (resultsWrapper) resultsWrapper.innerHTML = '';
-        // Show toggle if present
-        const toggleBtn = groupContainer.querySelector('.search-result-toggle-btn');
-        if (toggleBtn) toggleBtn.style.display = 'block';
-    }
-
-    // Patch: Show 'Thinking...' in empty AI message
-    const origAddMessage = addMessage;
-    addMessage = function(sender, text) {
-        const msg = origAddMessage.call(this, sender, text);
-        if (sender === 'ai' && (!text || text.trim() === '')) {
-            const contentElement = msg.querySelector('.chat-app__message-content');
-            if (contentElement) {
-                contentElement.innerHTML = '<span class="thinking-dots" aria-label="Thinking">Thinking<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>';
-            }
-        }
-        return msg;
-    };
 
     // Public API
     return {
@@ -667,6 +502,5 @@ const UIController = (function() {
         showError,
         showEmptyState,
         hideEmptyState,
-        focusMessageInput,
     };
 })(); 

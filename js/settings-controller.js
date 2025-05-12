@@ -14,8 +14,7 @@ const SettingsController = (function() {
         showThinking: true,
         selectedModel: 'gpt-4.1-mini', // Default model
         darkMode: true, // Default dark mode is now true
-        debug: true, // Debug logging ON by default
-        reasoningDetailLevel: 'standard' // New: default detail level
+        debug: true // Debug logging ON by default
     };
 
     /**
@@ -35,7 +34,6 @@ const SettingsController = (function() {
         document.getElementById('model-select').value = settings.selectedModel;
         document.getElementById('dark-mode-toggle').checked = settings.darkMode;
         document.getElementById('debug-toggle').checked = settings.debug;
-        document.getElementById('reasoning-detail-level').value = settings.reasoningDetailLevel || 'standard';
         
         // Add event listeners
         document.getElementById('save-settings').addEventListener('click', saveSettings);
@@ -92,7 +90,6 @@ const SettingsController = (function() {
         document.getElementById('model-select').value = settings.selectedModel;
         document.getElementById('dark-mode-toggle').checked = settings.darkMode;
         document.getElementById('debug-toggle').checked = settings.debug;
-        document.getElementById('reasoning-detail-level').value = settings.reasoningDetailLevel || 'standard';
         // Focus first element
         setTimeout(() => {
             const modalContent = settingsModal.querySelector('.settings-modal__content');
@@ -126,7 +123,6 @@ const SettingsController = (function() {
         const selectedModelValue = document.getElementById('model-select').value;
         const darkModeEnabled = document.getElementById('dark-mode-toggle').checked;
         const debugEnabled = document.getElementById('debug-toggle').checked;
-        const reasoningDetailLevel = document.getElementById('reasoning-detail-level').value;
         
         settings = {
             ...settings,
@@ -135,8 +131,7 @@ const SettingsController = (function() {
             showThinking: showThinkingEnabled,
             selectedModel: selectedModelValue,
             darkMode: darkModeEnabled,
-            debug: debugEnabled,
-            reasoningDetailLevel
+            debug: debugEnabled
         };
         
         // Update light/dark mode class
@@ -169,7 +164,6 @@ const SettingsController = (function() {
                 selectedModel: 'gpt-4.1-mini',
                 darkMode: true,
                 debug: true,
-                reasoningDetailLevel: 'standard',
                 ...savedSettings
             };
         } else {
@@ -179,8 +173,7 @@ const SettingsController = (function() {
                 showThinking: true,
                 selectedModel: 'gpt-4.1-mini',
                 darkMode: true,
-                debug: true,
-                reasoningDetailLevel: 'standard'
+                debug: true
             };
         }
         
