@@ -322,34 +322,47 @@ If you understand, follow these instructions for every relevant question. Do NOT
      * @returns {Object} - { steps: [], answer: string, hasStructuredResponse, partial, error }
      */
     function parseCoTResponse(response, isPartial = false) {
-        // New format: Step N [Type]: ...\nSummary: ...
-        const stepRegex = /Step (\d+) \[(Fact|Assumption|Action|Decision)\]: ([^\n]+)\nSummary: ([^\n]+)/g;
+        // Flexible regex: Accepts Step N, Reasoning:, Thinking:, etc. (case-insensitive, extra whitespace tolerated)
+        const stepRegex = /(?:Step\s*(\d+)[\s:,-]*)?(?:\[(Fact|Assumption|Action|Decision)\])?[:\-\s]*([\s\S]*?)(?:\n+Summary[:\-\s]*([\s\S]*?)(?=\n|$))?/gi;
+        const answerRegex = /(?:Final\s*Answer|Answer|Conclusion)[:\-\s]*([\s\S]*)$/i;
         const steps = [];
         let match;
+        let lastIndex = 0;
+        let foundStep = false;
+        // Try to extract steps
         while ((match = stepRegex.exec(response)) !== null) {
-            steps.push({
-                number: parseInt(match[1], 10),
-                type: match[2],
-                text: match[3].trim(),
-                summary: match[4].trim()
-            });
+            // Only consider if there's meaningful content
+            if ((match[1] || match[2] || match[3]) && match[3] && match[3].trim().length > 0) {
+                steps.push({
+                    number: match[1] ? parseInt(match[1], 10) : steps.length + 1,
+                    type: match[2] || 'Step',
+                    text: match[3].trim(),
+                    summary: match[4] ? match[4].trim() : ''
+                });
+                foundStep = true;
+                lastIndex = stepRegex.lastIndex;
+            }
         }
-        // Extract final answer
+        // Try to extract answer
         let answer = '';
-        const answerMatch = response.match(/Final Answer:([\s\S]*)$/);
+        let answerMatch = response.match(answerRegex);
         if (answerMatch) {
             answer = answerMatch[1].trim();
+        } else if (foundStep) {
+            // If steps found but no answer, try to find the next non-step text as answer
+            const afterSteps = response.slice(lastIndex).trim();
+            if (afterSteps.length > 0) answer = afterSteps;
         }
-        // Fallback: if no steps found, try old format
-        if (steps.length === 0) {
-            const thinkingSteps = [];
+        // Fallback: Try to extract reasoning/answer blocks if above fails
+        if (!foundStep && !answer) {
+            const fallbackRegex = /(Thinking:|Reasoning:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)|(Answer:|Conclusion:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)/gi;
+            let thinkingSteps = [];
             let fallbackAnswer = '';
-            let error = null;
             let hasStructuredResponse = false;
-            const regex = /(Thinking:|Reasoning:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)|(Answer:|Conclusion:)([\s\S]*?)(?=Thinking:|Reasoning:|Answer:|Conclusion:|$)/g;
+            let error = null;
             let m;
             let foundAnswer = false;
-            while ((m = regex.exec(response)) !== null) {
+            while ((m = fallbackRegex.exec(response)) !== null) {
                 if (m[1] === 'Thinking:' || m[1] === 'Reasoning:') {
                     thinkingSteps.push(m[2].trim());
                     hasStructuredResponse = true;
@@ -378,6 +391,16 @@ If you understand, follow these instructions for every relevant question. Do NOT
                 partial: isPartial,
                 error,
                 stage: isPartial && !foundAnswer ? 'thinking' : undefined
+            };
+        }
+        // If nothing could be parsed, fallback to raw response with warning
+        if (!foundStep && !answer) {
+            return {
+                steps: [],
+                answer: response.trim(),
+                hasStructuredResponse: false,
+                partial: isPartial,
+                error: 'AI response could not be parsed. Showing raw output.'
             };
         }
         // Store last reasoning and answer for compatibility

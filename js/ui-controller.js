@@ -375,10 +375,10 @@ const UIController = (function() {
         let formattedText = escapedText;
         // New: check for structured steps array in processed response
         if (typeof text === 'object' && text.steps && Array.isArray(text.steps) && text.steps.length > 0) {
-            // Render steps as ordered list with type and summary
-            formattedText = '<ol class="cot-steps">' + text.steps.map(step =>
-                `<li><span class="cot-step-number">Step ${step.number}</span> <span class="cot-step-type">[${step.type}]</span>: ${escapeHtml(step.text)}<br><span class="cot-step-summary"><em>Summary:</em> ${escapeHtml(step.summary)}</span></li>`
-            ).join('') + '</ol>';
+            // Render steps as ordered list with type and summary, wrapped in a collapsible container
+            formattedText = `<div class="cot-reasoning" style="display:block;" title="This section shows the AI's step-by-step reasoning process."><ol class="cot-steps">` + text.steps.map(step =>
+                `<li title=\"This is an intermediate step in the AI's reasoning.\"><span class="cot-step-number">Step ${step.number}</span> <span class="cot-step-type">[${step.type}]</span>: ${escapeHtml(step.text)}<br><span class="cot-step-summary"><em>Summary:</em> ${escapeHtml(step.summary)}</span></li>`
+            ).join('') + '</ol></div>';
             if (text.answer) {
                 formattedText += `<div class="answer-section"><strong>Final Answer:</strong><br>${escapeHtml(text.answer).replace(/\n/g, '<br>')}</div>`;
             }
@@ -406,14 +406,26 @@ const UIController = (function() {
     // Helper: Add toggle button for CoT responses
     function addToggleButton(messageElement, text) {
         // Show toggle if any reasoning/answer block is present
-        const hasReasoning = /Thinking:|Reasoning:/.test(text);
-        const hasAnswer = /Answer:|Conclusion:/.test(text);
+        const hasReasoning = /Thinking:|Reasoning:|cot-reasoning/.test(text);
+        const hasAnswer = /Answer:|Conclusion:|Final Answer/.test(text);
         if (hasReasoning && hasAnswer && messageElement.classList.contains('ai-message')) {
             const toggleButton = document.createElement('button');
             toggleButton.className = 'toggle-thinking';
-            toggleButton.textContent = 'Hide thinking';
-            toggleButton.setAttribute('data-expanded', 'true');
-            messageElement.querySelector('.chat-app__message-content').parentNode.insertBefore(toggleButton, messageElement.querySelector('.chat-app__message-content').nextSibling);
+            toggleButton.textContent = 'Show thinking';
+            toggleButton.setAttribute('data-expanded', 'false');
+            toggleButton.setAttribute('title', "Show or hide the AI's step-by-step reasoning process");
+            // Collapse reasoning by default
+            messageElement.classList.add('thinking-collapsed');
+            // Insert toggle after message content
+            const contentElem = messageElement.querySelector('.chat-app__message-content');
+            contentElem.parentNode.insertBefore(toggleButton, contentElem.nextSibling);
+            // Add info icon with tooltip
+            const infoIcon = document.createElement('span');
+            infoIcon.className = 'cot-info-icon';
+            infoIcon.innerHTML = 'ℹ️';
+            infoIcon.setAttribute('tabindex', '0');
+            infoIcon.setAttribute('title', "Click 'Show thinking' to see the AI's step-by-step reasoning. This can help you understand how the answer was reached.");
+            toggleButton.parentNode.insertBefore(infoIcon, toggleButton.nextSibling);
         }
     }
 
