@@ -507,7 +507,7 @@ body:not(.light-mode) .chat-app__message.ai-message {
     box-shadow: 0 4px 24px #007bff22, 0 1.5px 8px #b3d4fc33;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.35s cubic-bezier(.4,0,.2,1), background 0.3s;
+    transition: opacity 0s, background 0.3s;
     visibility: hidden;
     display: flex;
     align-items: center;
@@ -518,11 +518,6 @@ body:not(.light-mode) .chat-app__message.ai-message {
     opacity: 1;
     pointer-events: auto;
     visibility: visible;
-    animation: fadeInStatusBar 0.4s;
-}
-@keyframes fadeInStatusBar {
-    from { opacity: 0; transform: translateY(20px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .status-bar__icon {
     display: inline-flex;
