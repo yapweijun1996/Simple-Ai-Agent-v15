@@ -72,9 +72,9 @@
         <div id="status-bar" class="chat-app__status-bar" role="status" aria-live="polite" style="visibility:hidden;"></div>
 
         <!-- Chat Controls Component -->
-        <footer id="controls" class="chat-app__controls" role="form" aria-label="Chat message input area">
-            <textarea id="message-input" class="chat-app__message-input" rows="1" placeholder="Type your message here" aria-label="Message Input" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';"></textarea>
-            <button id="send-button" class="chat-app__send-button" aria-label="Send message">Send</button>
+        <footer id="controls" class="chat-app__controls">
+            <textarea id="message-input" class="chat-app__message-input" rows="1" placeholder="Type your message here" aria-label="Message Input"></textarea>
+            <button id="send-button" class="chat-app__send-button">Send</button>
         </footer>
     </main>
 
@@ -122,12 +122,6 @@
                         Enable debug logging (console)
                     </label>
                 </div>
-                <div class="settings-modal__item">
-                    <label for="cors-proxy-url" class="settings-modal__label" title="Set a custom CORS proxy URL for web search and instant answers. Strongly recommended for reliability. Leave blank to use public proxies (less reliable).">
-                        CORS Proxy URL:
-                        <input type="text" id="cors-proxy-url" class="settings-modal__select" placeholder="https://my-cors-proxy.example.com/">
-                    </label>
-                </div>
                 <div class="settings-modal__actions">
                     <button id="save-settings" class="settings-modal__button settings-modal__button--primary">Save</button>
                     <button id="close-settings" class="settings-modal__button">Close</button>
@@ -155,7 +149,7 @@
                 </div>
                 <div class="settings-modal__item">
                     <label for="remember-password" class="settings-modal__label">
-                        <input type="checkbox" id="remember-password" class="settings-modal__checkbox" checked>
+                        <input type="checkbox" id="remember-password" class="settings-modal__checkbox">
                         Remember password for future sessions
                     </label>
                 </div>

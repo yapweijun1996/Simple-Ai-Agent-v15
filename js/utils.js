@@ -207,13 +207,7 @@ const Utils = (function() {
         return String(str).replace(/[&<>"']/g, s => map[s]);
     }
 
-    /**
-     * Fetches a resource with a timeout using AbortController.
-     * @param {string} resource - The resource URL.
-     * @param {Object} [options={}] - Fetch options.
-     * @param {number} [timeout=10000] - Timeout in ms.
-     * @returns {Promise<Response>} - The fetch response.
-     */
+    // Add fetch helpers for timeout and retry
     async function fetchWithTimeout(resource, options = {}, timeout = 10000) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
@@ -225,15 +219,6 @@ const Utils = (function() {
         }
     }
 
-    /**
-     * Fetches a resource with retry and timeout logic.
-     * @param {string} url - The resource URL.
-     * @param {Object} [options={}] - Fetch options.
-     * @param {number} [maxAttempts=3] - Max retry attempts.
-     * @param {number} [delay=1000] - Delay between retries in ms.
-     * @param {number} [timeout=10000] - Timeout in ms.
-     * @returns {Promise<Response>} - The fetch response.
-     */
     async function fetchWithRetry(url, options = {}, maxAttempts = 3, delay = 1000, timeout = 10000) {
         let attempt = 0;
         while (attempt < maxAttempts) {
@@ -256,12 +241,11 @@ const Utils = (function() {
         }
     }
 
-    /**
-     * List of CORS proxies for fetchWithProxyRetry.
-     * @type {string[]}
-     */
+    // Add CORS proxy list and proxy-based retry helper
     const corsProxies = [
+        // Direct fetch first
         '',
+        // Widely used public CORS proxies
         'https://cors-anywhere.herokuapp.com/',
         'https://jsonp.afeld.me/?url=',
         'https://api.allorigins.win/raw?url=',
@@ -279,41 +263,10 @@ const Utils = (function() {
         'https://cors-proxy.elfsight.com/'
     ];
 
-    /**
-     * Returns the list of CORS proxies, prioritizing user-supplied proxy if set.
-     * @returns {string[]}
-     */
-    function getCorsProxies() {
-        let userProxy = '';
-        try {
-            // Try to get from settings if available
-            if (window.SettingsController && typeof window.SettingsController.getSettings === 'function') {
-                userProxy = window.SettingsController.getSettings().corsProxyUrl || '';
-            }
-        } catch (e) {}
-        if (userProxy) {
-            // If user proxy is set, use it as the first (or only) proxy
-            return [userProxy, ...corsProxies.filter(p => p !== userProxy && p !== '')];
-        }
-        return corsProxies;
-    }
-
-    /**
-     * Fetches a resource using a list of CORS proxies with retry logic.
-     * @param {string} resource - The resource URL.
-     * @param {Object} [options={}] - Fetch options.
-     * @param {string[]} [proxies=corsProxies] - List of proxy prefixes.
-     * @param {number} [retries=proxies.length] - Number of retries.
-     * @param {number} [retryDelay=1000] - Delay between retries in ms.
-     * @param {number} [timeout=10000] - Timeout in ms.
-     * @returns {Promise<Response>} - The fetch response.
-     */
-    async function fetchWithProxyRetry(resource, options = {}, proxies = null, retries = null, retryDelay = 1000, timeout = 10000) {
-        const proxyList = proxies || getCorsProxies();
-        const maxRetries = retries !== null ? retries : proxyList.length;
+    async function fetchWithProxyRetry(resource, options = {}, proxies = corsProxies, retries = proxies.length, retryDelay = 1000, timeout = 10000) {
         let lastError;
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            const prefix = proxyList[(attempt - 1) % proxyList.length];
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            const prefix = proxies[(attempt - 1) % proxies.length];
             const url = prefix
                 ? (prefix.endsWith('?') || prefix.includes('?url=')
                     ? prefix + encodeURIComponent(resource)
@@ -329,7 +282,7 @@ const Utils = (function() {
             } catch (err) {
                 lastError = err;
                 console.warn(`Proxy fetch attempt ${attempt} via ${prefix || 'direct'} failed:`, err);
-                if (attempt < maxRetries) await new Promise(r => setTimeout(r, retryDelay));
+                if (attempt < retries) await new Promise(r => setTimeout(r, retryDelay));
             }
         }
         throw lastError;
@@ -353,7 +306,6 @@ const Utils = (function() {
         escapeHtml,
         fetchWithTimeout,
         fetchWithRetry,
-        fetchWithProxyRetry,
-        getCorsProxies
+        fetchWithProxyRetry
     };
 })(); 

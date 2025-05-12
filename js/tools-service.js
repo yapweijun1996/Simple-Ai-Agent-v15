@@ -32,6 +32,9 @@ const ToolsService = (function() {
       { name: 'FinalFallback',     formatUrl: url => url,                                                                parseResponse: async res => res.text() }
     ];
 
+    // Proxy health tracking
+    const proxyHealth = new Map(proxies.map(p => [p.name, 1]));
+
     function getFinalUrl(rawUrl) {
       try {
         const parsed = new URL(rawUrl);
@@ -43,24 +46,61 @@ const ToolsService = (function() {
     }
 
     /**
-     * Performs a DuckDuckGo HTML search via proxies.
+     * Performs a search via the specified engine (duckduckgo, google, bing), streams results as found.
      * @param {string} query
+     * @param {function} onResult - Callback for each result as it's found
+     * @param {string} [engine] - Search engine: 'duckduckgo', 'google', or 'bing'
      * @returns {Promise<Array<{title:string,url:string,snippet:string}>>}
      */
-    async function webSearch(query) {
-      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-      for (const proxy of proxies) {
-        try {
-          const response = await fetch(proxy.formatUrl(ddgUrl));
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const htmlString = await proxy.parseResponse(response);
+    async function webSearch(query, onResult, engine = 'duckduckgo') {
+      let searchUrl, parseResults;
+      if (engine === 'google') {
+        searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en`;
+        parseResults = function(htmlString) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlString, 'text/html');
+          const items = doc.querySelectorAll('div.g');
+          const results = [];
+          items.forEach(item => {
+            const anchor = item.querySelector('a');
+            const titleElem = item.querySelector('h3');
+            if (!anchor || !titleElem) return;
+            const href = anchor.href;
+            const title = titleElem.textContent.trim();
+            const snippetElem = item.querySelector('.VwiC3b, .IsZvec');
+            const snippet = snippetElem ? snippetElem.textContent.trim() : '';
+            results.push({ title, url: href, snippet });
+          });
+          return results;
+        };
+      } else if (engine === 'bing') {
+        searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+        parseResults = function(htmlString) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlString, 'text/html');
+          const items = doc.querySelectorAll('li.b_algo');
+          const results = [];
+          items.forEach(item => {
+            const anchor = item.querySelector('a');
+            const titleElem = item.querySelector('h2');
+            if (!anchor || !titleElem) return;
+            const href = anchor.href;
+            const title = titleElem.textContent.trim();
+            const snippetElem = item.querySelector('p');
+            const snippet = snippetElem ? snippetElem.textContent.trim() : '';
+            results.push({ title, url: href, snippet });
+          });
+          return results;
+        };
+      } else {
+        // Default to DuckDuckGo
+        searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+        parseResults = function(htmlString) {
           const parser = new DOMParser();
           const doc = parser.parseFromString(htmlString, 'text/html');
           const container = doc.getElementById('links');
-          if (!container) throw new Error('No results container');
+          if (!container) return [];
           const items = container.querySelectorAll('div.result');
-          if (!items.length) throw new Error('No results');
-
           const results = [];
           items.forEach(item => {
             const anchor = item.querySelector('a.result__a');
@@ -72,8 +112,27 @@ const ToolsService = (function() {
             results.push({ title, url: href, snippet });
           });
           return results;
+        };
+      }
+      // Sort proxies by health score
+      const sortedProxies = proxies.slice().sort((a, b) => (proxyHealth.get(b.name) || 0) - (proxyHealth.get(a.name) || 0));
+      let partialResults = [];
+      for (const proxy of sortedProxies) {
+        try {
+          const response = await fetch(proxy.formatUrl(searchUrl));
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const htmlString = await proxy.parseResponse(response);
+          const results = parseResults(htmlString);
+          if (!results.length) throw new Error('No results');
+          results.forEach(result => { if (onResult) onResult(result); });
+          proxyHealth.set(proxy.name, (proxyHealth.get(proxy.name) || 1) + 2); // reward
+          return results;
         } catch (err) {
-          console.warn(`Proxy ${proxy.name} failed: ${err.message}`);
+          proxyHealth.set(proxy.name, (proxyHealth.get(proxy.name) || 1) - 2); // penalize
+          if (partialResults.length) {
+            if (onResult) partialResults.forEach(r => onResult(r));
+            return partialResults;
+          }
         }
       }
       throw new Error('All proxies failed');
@@ -120,15 +179,17 @@ const ToolsService = (function() {
     async function instantAnswer(query) {
       const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
       let response;
+      // Try via CORS proxy first to avoid CORS issues
       try {
         response = await Utils.fetchWithProxyRetry(url, { method: 'GET' });
       } catch (proxyErr) {
+        console.warn('Instant Answer proxy fetch failed, falling back to direct fetch:', proxyErr);
         // Fallback to direct fetch
         response = await fetch(url);
       }
       if (!response.ok) {
-        const errText = await (response.text().catch(() => ''));
-        throw new Error(`Instant Answer API error ${response.status}: ${errText}\n\nTip: Set up your own CORS proxy in Settings for reliable instant answers.`);
+        const errText = await (response.text().catch(() => ''));    
+        throw new Error(`Instant Answer API error ${response.status}: ${errText}`);
       }
       return response.json();
     }

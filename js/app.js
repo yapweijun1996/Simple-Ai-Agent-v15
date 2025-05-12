@@ -28,9 +28,6 @@ const App = (function() {
         // Show main container (will be visible but login modal on top)
         document.getElementById('chat-container').style.display = 'flex';
         
-        // Show agent working log (even if empty)
-        UIController.showAgentLog(ChatController.getToolCallHistory());
-        
         // Check for saved password
         checkPasswordOrPrompt();
     }
