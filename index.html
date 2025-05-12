@@ -122,6 +122,12 @@
                         Enable debug logging (console)
                     </label>
                 </div>
+                <div class="settings-modal__item">
+                    <label for="cors-proxy-url" class="settings-modal__label" title="Set a custom CORS proxy URL for web search and instant answers. Strongly recommended for reliability. Leave blank to use public proxies (less reliable).">
+                        CORS Proxy URL:
+                        <input type="text" id="cors-proxy-url" class="settings-modal__select" placeholder="https://my-cors-proxy.example.com/">
+                    </label>
+                </div>
                 <div class="settings-modal__actions">
                     <button id="save-settings" class="settings-modal__button settings-modal__button--primary">Save</button>
                     <button id="close-settings" class="settings-modal__button">Close</button>

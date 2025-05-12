@@ -104,7 +104,7 @@ const ToolsService = (function() {
           }
         }
       }
-      throw new Error('All proxies failed');
+      throw new Error('All proxies failed.\n\nTip: Set up your own CORS proxy in Settings for reliable web search and instant answers.');
     }
 
     /**
@@ -156,7 +156,7 @@ const ToolsService = (function() {
       }
       if (!response.ok) {
         const errText = await (response.text().catch(() => ''));
-        throw new Error(`Instant Answer API error ${response.status}: ${errText}`);
+        throw new Error(`Instant Answer API error ${response.status}: ${errText}\n\nTip: Set up your own CORS proxy in Settings for reliable instant answers.`);
       }
       return response.json();
     }

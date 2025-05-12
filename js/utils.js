@@ -280,6 +280,25 @@ const Utils = (function() {
     ];
 
     /**
+     * Returns the list of CORS proxies, prioritizing user-supplied proxy if set.
+     * @returns {string[]}
+     */
+    function getCorsProxies() {
+        let userProxy = '';
+        try {
+            // Try to get from settings if available
+            if (window.SettingsController && typeof window.SettingsController.getSettings === 'function') {
+                userProxy = window.SettingsController.getSettings().corsProxyUrl || '';
+            }
+        } catch (e) {}
+        if (userProxy) {
+            // If user proxy is set, use it as the first (or only) proxy
+            return [userProxy, ...corsProxies.filter(p => p !== userProxy && p !== '')];
+        }
+        return corsProxies;
+    }
+
+    /**
      * Fetches a resource using a list of CORS proxies with retry logic.
      * @param {string} resource - The resource URL.
      * @param {Object} [options={}] - Fetch options.
@@ -289,10 +308,12 @@ const Utils = (function() {
      * @param {number} [timeout=10000] - Timeout in ms.
      * @returns {Promise<Response>} - The fetch response.
      */
-    async function fetchWithProxyRetry(resource, options = {}, proxies = corsProxies, retries = proxies.length, retryDelay = 1000, timeout = 10000) {
+    async function fetchWithProxyRetry(resource, options = {}, proxies = null, retries = null, retryDelay = 1000, timeout = 10000) {
+        const proxyList = proxies || getCorsProxies();
+        const maxRetries = retries !== null ? retries : proxyList.length;
         let lastError;
-        for (let attempt = 1; attempt <= retries; attempt++) {
-            const prefix = proxies[(attempt - 1) % proxies.length];
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            const prefix = proxyList[(attempt - 1) % proxyList.length];
             const url = prefix
                 ? (prefix.endsWith('?') || prefix.includes('?url=')
                     ? prefix + encodeURIComponent(resource)
@@ -308,7 +329,7 @@ const Utils = (function() {
             } catch (err) {
                 lastError = err;
                 console.warn(`Proxy fetch attempt ${attempt} via ${prefix || 'direct'} failed:`, err);
-                if (attempt < retries) await new Promise(r => setTimeout(r, retryDelay));
+                if (attempt < maxRetries) await new Promise(r => setTimeout(r, retryDelay));
             }
         }
         throw lastError;
@@ -332,6 +353,7 @@ const Utils = (function() {
         escapeHtml,
         fetchWithTimeout,
         fetchWithRetry,
-        fetchWithProxyRetry
+        fetchWithProxyRetry,
+        getCorsProxies
     };
 })(); 

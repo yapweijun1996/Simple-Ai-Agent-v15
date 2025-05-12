@@ -14,7 +14,8 @@ const SettingsController = (function() {
         showThinking: true,
         selectedModel: 'gpt-4.1-mini', // Default model
         darkMode: true, // Default dark mode is now true
-        debug: true // Debug logging ON by default
+        debug: true, // Debug logging ON by default
+        corsProxyUrl: '' // Default corsProxyUrl
     };
 
     /**
@@ -34,6 +35,7 @@ const SettingsController = (function() {
         document.getElementById('model-select').value = settings.selectedModel;
         document.getElementById('dark-mode-toggle').checked = settings.darkMode;
         document.getElementById('debug-toggle').checked = settings.debug;
+        document.getElementById('cors-proxy-url').value = settings.corsProxyUrl || '';
         
         // Add event listeners
         document.getElementById('save-settings').addEventListener('click', saveSettings);
@@ -90,6 +92,7 @@ const SettingsController = (function() {
         document.getElementById('model-select').value = settings.selectedModel;
         document.getElementById('dark-mode-toggle').checked = settings.darkMode;
         document.getElementById('debug-toggle').checked = settings.debug;
+        document.getElementById('cors-proxy-url').value = settings.corsProxyUrl || '';
         // Focus first element
         setTimeout(() => {
             const modalContent = settingsModal.querySelector('.settings-modal__content');
@@ -123,6 +126,7 @@ const SettingsController = (function() {
         const selectedModelValue = document.getElementById('model-select').value;
         const darkModeEnabled = document.getElementById('dark-mode-toggle').checked;
         const debugEnabled = document.getElementById('debug-toggle').checked;
+        const corsProxyUrl = document.getElementById('cors-proxy-url').value.trim();
         
         settings = {
             ...settings,
@@ -131,7 +135,8 @@ const SettingsController = (function() {
             showThinking: showThinkingEnabled,
             selectedModel: selectedModelValue,
             darkMode: darkModeEnabled,
-            debug: debugEnabled
+            debug: debugEnabled,
+            corsProxyUrl: corsProxyUrl
         };
         
         // Update light/dark mode class
@@ -164,6 +169,7 @@ const SettingsController = (function() {
                 selectedModel: 'gpt-4.1-mini',
                 darkMode: true,
                 debug: true,
+                corsProxyUrl: '',
                 ...savedSettings
             };
         } else {
@@ -173,7 +179,8 @@ const SettingsController = (function() {
                 showThinking: true,
                 selectedModel: 'gpt-4.1-mini',
                 darkMode: true,
-                debug: true
+                debug: true,
+                corsProxyUrl: ''
             };
         }
         
