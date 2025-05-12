@@ -186,11 +186,10 @@ const UIController = (function() {
         const existingToggle = messageElement.querySelector('.toggle-thinking');
         if (existingToggle) existingToggle.remove();
         if (text === '🤔 Thinking...') {
-            setThinkingIndicator(contentElement);
+            // Do not display anything for thinking in the chat window
             return;
         }
         if (sender === 'ai' && window.marked) {
-            // Use marked.js to render markdown to HTML for AI replies
             contentElement.className = 'chat-app__message-content';
             contentElement.innerHTML = marked.parse(text);
         } else {
@@ -286,13 +285,9 @@ const UIController = (function() {
         const chatWindow = document.getElementById('chat-window');
         const messageElement = Utils.createFromTemplate('message-template');
         messageElement.classList.add('ai-message');
-        
-        const contentElement = messageElement.querySelector('.chat-app__message-content');
-        contentElement.innerHTML = '<span class="thinking-indicator">Thinking...</span>'; // Placeholder
-        
+        // No placeholder content
         chatWindow.appendChild(messageElement);
         messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        
         return messageElement;
     }
 

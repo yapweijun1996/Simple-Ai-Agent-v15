@@ -569,10 +569,8 @@ If you understand, follow these instructions for every relevant question. Do NOT
     async function handleStreamingResponse({ model, aiMsgElement, streamFn, onToolCall }) {
         let streamedResponse = '';
         try {
-            if (state.settings.enableCoT) {
-                state.isThinking = true;
-                UIController.updateMessageContent(aiMsgElement, '🤔 Thinking...', 'ai');
-            }
+            // Show status bar feedback instead of chat message
+            UIController.showStatus('AI is working...');
             const fullReply = await streamFn(
                 model,
                 state.chatHistory,
@@ -593,6 +591,7 @@ If you understand, follow these instructions for every relevant question. Do NOT
             const toolCall = extractToolCall(fullReply);
             if (toolCall && toolCall.tool && toolCall.arguments) {
                 await onToolCall(toolCall);
+                UIController.clearStatus();
                 return;
             }
             if (state.settings.enableCoT) {
@@ -615,11 +614,12 @@ If you understand, follow these instructions for every relevant question. Do NOT
             throw err;
         } finally {
             state.isThinking = false;
+            UIController.clearStatus();
         }
     }
 
     async function handleNonStreamingResponse({ model, requestFn, onToolCall, aiMsgElement }) {
-        UIController.showStatus('Waiting for AI response...');
+        UIController.showStatus('AI is working...');
         // Ensure aiMsgElement is always defined
         if (!aiMsgElement) {
             aiMsgElement = UIController.createEmptyAIMessage();
@@ -636,6 +636,7 @@ If you understand, follow these instructions for every relevant question. Do NOT
             const toolCall = extractToolCall(reply);
             if (toolCall && toolCall.tool && toolCall.arguments) {
                 await onToolCall(toolCall);
+                UIController.clearStatus();
                 return;
             }
             if (state.settings.enableCoT) {
@@ -652,6 +653,8 @@ If you understand, follow these instructions for every relevant question. Do NOT
             }
         } catch (err) {
             throw err;
+        } finally {
+            UIController.clearStatus();
         }
     }
 
