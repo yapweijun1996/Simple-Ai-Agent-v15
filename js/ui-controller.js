@@ -164,6 +164,16 @@ const UIController = (function() {
         // Add to chat window and scroll into view
         chatWindow.appendChild(messageElement);
         messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        // Focus the textarea after AI replies for better UX
+        if (sender === 'ai') {
+            const messageInput = document.getElementById('message-input');
+            if (messageInput) {
+                // Only focus if not already focused (avoid interrupting user typing)
+                if (document.activeElement !== messageInput) {
+                    messageInput.focus();
+                }
+            }
+        }
         
         return messageElement;
     }
