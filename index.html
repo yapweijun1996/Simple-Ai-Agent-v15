@@ -68,11 +68,19 @@
         <div id="token-usage" class="chat-app__token-usage">Total tokens used: 0</div>
 
         <!-- Status Bar Under Token Usage -->
-        <div id="status-bar-under-token" class="chat-app__status-bar" role="status" aria-live="polite"></div>
+        <div id="status-bar-under-token" class="chat-app__status-bar" role="status" aria-live="polite">
+            <span class="status-bar__icon" aria-hidden="true"></span>
+            <span class="status-bar__message"></span>
+            <button class="status-bar__close" aria-label="Close status bar" style="display:none;">×</button>
+        </div>
 
         <!-- Chat Messages Component -->
         <section id="chat-window" class="chat-app__window" aria-live="polite" role="log"></section>
-        <div id="status-bar" class="chat-app__status-bar" role="status" aria-live="polite"></div>
+        <div id="status-bar" class="chat-app__status-bar" role="status" aria-live="polite">
+            <span class="status-bar__icon" aria-hidden="true"></span>
+            <span class="status-bar__message"></span>
+            <button class="status-bar__close" aria-label="Close status bar" style="display:none;">×</button>
+        </div>
 
         <!-- Chat Controls Component -->
         <footer id="controls" class="chat-app__controls">

@@ -71,6 +71,7 @@ const UIController = (function() {
         showEmptyState();
         // Add scroll-to-bottom button
         setupScrollToBottomButton();
+        setupStatusBarClose();
     }
 
     // Floating scroll-to-bottom button logic
@@ -303,36 +304,72 @@ const UIController = (function() {
         return parts.length ? `<span class="status-bar__details">${parts.join(' | ')}</span>` : '';
     }
 
-    function showStatus(message, agentDetails) {
-        const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.innerHTML = `${message} ${formatAgentDetails(agentDetails)}`;
-            bar.classList.add('chat-app__status-bar--active');
+    // --- Status Bar Logic (Refined) ---
+    function setStatusBar(bar, { type = 'info', message = '', agentDetails = null, showSpinner = false, autoDismiss = false }) {
+        if (!bar) return;
+        // Elements
+        const icon = bar.querySelector('.status-bar__icon');
+        const msg = bar.querySelector('.status-bar__message');
+        const closeBtn = bar.querySelector('.status-bar__close');
+        // Reset
+        bar.classList.remove('status-bar--info', 'status-bar--error', 'status-bar--progress', 'chat-app__status-bar--active');
+        icon.innerHTML = '';
+        msg.innerHTML = '';
+        closeBtn.style.display = 'none';
+        bar.removeAttribute('role');
+        bar.removeAttribute('aria-live');
+        // State
+        let iconHtml = '';
+        let barClass = '';
+        let ariaRole = 'status';
+        let ariaLive = 'polite';
+        if (type === 'error') {
+            iconHtml = '❌';
+            barClass = 'status-bar--error';
+            ariaRole = 'alert';
+            ariaLive = 'assertive';
+            closeBtn.style.display = '';
+        } else if (type === 'progress') {
+            iconHtml = showSpinner ? '<span class="spinner" aria-hidden="true"></span>' : '⏳';
+            barClass = 'status-bar--progress';
+            // No close for progress
+        } else { // info/default
+            iconHtml = 'ℹ️';
+            barClass = 'status-bar--info';
+            closeBtn.style.display = '';
+        }
+        icon.innerHTML = iconHtml;
+        msg.innerHTML = message + (agentDetails ? ' ' + formatAgentDetails(agentDetails) : '');
+        bar.classList.add(barClass, 'chat-app__status-bar--active');
+        bar.setAttribute('role', ariaRole);
+        bar.setAttribute('aria-live', ariaLive);
+        // Auto-dismiss for info
+        if (type === 'info' && autoDismiss) {
+            setTimeout(() => {
+                clearStatusBar(bar);
+            }, 2500);
         }
     }
-
-    function clearStatus() {
-        const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.textContent = '';
-            bar.classList.remove('chat-app__status-bar--active');
-        }
+    function clearStatusBar(bar) {
+        if (!bar) return;
+        bar.classList.remove('chat-app__status-bar--active', 'status-bar--info', 'status-bar--error', 'status-bar--progress');
+        bar.querySelector('.status-bar__icon').innerHTML = '';
+        bar.querySelector('.status-bar__message').innerHTML = '';
+        bar.querySelector('.status-bar__close').style.display = 'none';
+        bar.removeAttribute('role');
+        bar.removeAttribute('aria-live');
     }
-
-    // Spinner for progress feedback
-    function showSpinner(message, agentDetails) {
-        const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message} ${formatAgentDetails(agentDetails)}`;
-            bar.classList.add('chat-app__status-bar--active');
-        }
-    }
-    function hideSpinner() {
-        const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.innerHTML = '';
-            bar.classList.remove('chat-app__status-bar--active');
-        }
+    // Attach close button listeners (for both bars)
+    function setupStatusBarClose() {
+        ['status-bar', 'status-bar-under-token'].forEach(id => {
+            const bar = document.getElementById(id);
+            if (bar) {
+                const closeBtn = bar.querySelector('.status-bar__close');
+                if (closeBtn) {
+                    closeBtn.onclick = () => clearStatusBar(bar);
+                }
+            }
+        });
     }
 
     /**
@@ -422,19 +459,7 @@ const UIController = (function() {
      * Show error feedback in the status bar (with ARIA live region)
      */
     function showError(message) {
-        const bar = document.getElementById('status-bar');
-        if (bar) {
-            bar.textContent = message;
-            bar.classList.add('chat-app__status-bar--active');
-            bar.setAttribute('role', 'alert');
-            bar.setAttribute('aria-live', 'assertive');
-            setTimeout(() => {
-                bar.textContent = '';
-                bar.classList.remove('chat-app__status-bar--active');
-                bar.removeAttribute('role');
-                bar.removeAttribute('aria-live');
-            }, 3000);
-        }
+        setStatusBar(document.getElementById('status-bar'), { type: 'error', message, autoDismiss: false });
     }
 
     // Helper: Format message content (code blocks and CoT reasoning)
@@ -485,32 +510,16 @@ const UIController = (function() {
 
     // Status bar under token-usage controls
     function showStatusUnderToken(message, agentDetails) {
-        const bar = document.getElementById('status-bar-under-token');
-        if (bar) {
-            bar.innerHTML = `${message} ${formatAgentDetails(agentDetails)}`;
-            bar.classList.add('chat-app__status-bar--active');
-        }
+        setStatusBar(document.getElementById('status-bar-under-token'), { type: 'info', message, agentDetails, autoDismiss: true });
     }
     function clearStatusUnderToken() {
-        const bar = document.getElementById('status-bar-under-token');
-        if (bar) {
-            bar.textContent = '';
-            bar.classList.remove('chat-app__status-bar--active');
-        }
+        clearStatusBar(document.getElementById('status-bar-under-token'));
     }
     function showSpinnerUnderToken(message, agentDetails) {
-        const bar = document.getElementById('status-bar-under-token');
-        if (bar) {
-            bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message} ${formatAgentDetails(agentDetails)}`;
-            bar.classList.add('chat-app__status-bar--active');
-        }
+        setStatusBar(document.getElementById('status-bar-under-token'), { type: 'progress', message, agentDetails, showSpinner: true });
     }
     function hideSpinnerUnderToken() {
-        const bar = document.getElementById('status-bar-under-token');
-        if (bar) {
-            bar.innerHTML = '';
-            bar.classList.remove('chat-app__status-bar--active');
-        }
+        clearStatusBar(document.getElementById('status-bar-under-token'));
     }
 
     // Public API

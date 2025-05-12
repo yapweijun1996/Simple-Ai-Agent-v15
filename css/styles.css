@@ -511,8 +511,8 @@ body:not(.light-mode) .chat-app__message.ai-message {
     visibility: hidden;
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-height: 44px;
+    gap: 14px;
+    min-height: 48px;
 }
 .chat-app__status-bar--active {
     opacity: 1;
@@ -528,39 +528,89 @@ body:not(.light-mode) .chat-app__message.ai-message {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.5em;
-    height: 1.5em;
-    margin-right: 6px;
-    font-size: 1.2em;
+    width: 1.7em;
+    height: 1.7em;
+    margin-right: 2px;
+    font-size: 1.25em;
+    flex-shrink: 0;
 }
-.status-bar__progress {
-    position: absolute;
-    left: 0; bottom: 0;
-    width: 100%;
-    height: 3px;
-    background: linear-gradient(90deg, #4f8cff 0%, #b3d4fc 100%);
-    border-radius: 0 0 14px 14px;
-    animation: statusBarProgress 2s linear infinite;
-    opacity: 0.7;
+.status-bar__message {
+    flex: 1 1 auto;
+    text-align: left;
+    word-break: break-word;
+    font-size: 1em;
+    min-width: 0;
 }
-@keyframes statusBarProgress {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+.status-bar__close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.3em;
+    margin-left: 10px;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 2em;
+    height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
 }
-body.dark-mode .chat-app__status-bar {
+.status-bar__close:hover, .status-bar__close:focus {
+    background: #eaf3ff;
+    color: #2a3a4a;
+    outline: 2px solid #4f8cff;
+}
+/* State classes for info, error, progress */
+.status-bar--info {
+    background: rgba(234, 243, 255, 0.98);
+    color: #2a3a4a;
+    border: 1px solid #b3d4fc;
+}
+.status-bar--error {
+    background: #ffeded;
+    color: #b00020;
+    border: 1.5px solid #ff5c5c;
+}
+.status-bar--progress {
+    background: #eaf3ff;
+    color: #2a3a4a;
+    border: 1.5px solid #4f8cff;
+}
+body.dark-mode .status-bar--info {
     background: rgba(35, 39, 46, 0.98);
     color: #eaf3ff;
     border: 1px solid #23272e;
-    box-shadow: 0 4px 24px #23272e99, 0 1.5px 8px #4f8cff33;
+}
+body.dark-mode .status-bar--error {
+    background: #3a2323;
+    color: #ffb3b3;
+    border: 1.5px solid #ff5c5c;
+}
+body.dark-mode .status-bar--progress {
+    background: #23272e;
+    color: #eaf3ff;
+    border: 1.5px solid #4f8cff;
 }
 @media (max-width: 600px) {
     .chat-app__status-bar {
-        width: calc(100% - 10px);
-        max-width: 98vw;
-        padding: 10px 8px;
+        width: calc(100% - 6px);
+        max-width: 99vw;
+        padding: 10px 4px;
         font-size: 0.98rem;
         border-radius: 10px;
         bottom: 70px;
+        gap: 8px;
+    }
+    .status-bar__icon {
+        font-size: 1.1em;
+        width: 1.3em;
+        height: 1.3em;
+    }
+    .status-bar__close {
+        font-size: 1.1em;
+        width: 1.5em;
+        height: 1.5em;
     }
 }
 
