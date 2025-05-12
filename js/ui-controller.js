@@ -467,6 +467,38 @@ const UIController = (function() {
         }
     }
 
+    // Helper: Format timestamp as HH:MM:SS
+    function formatTime(ts) {
+        const d = new Date(ts);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    /**
+     * Show the agent working log in the status bar
+     * @param {Array} logs - Array of {tool, args, timestamp}
+     */
+    function showAgentLog(logs) {
+        const bar = document.getElementById('status-bar');
+        if (!bar) return;
+        if (!logs || !logs.length) {
+            bar.innerHTML = '<span class="status-bar__icon">📝</span> No agent activity yet.';
+            bar.style.visibility = 'visible';
+            return;
+        }
+        // Show up to 5 most recent logs, newest last
+        const recent = logs.slice(-5);
+        const html = [
+            '<span class="status-bar__icon">📝</span> <strong>Agent Working Log:</strong>',
+            '<ul style="margin:0; padding-left:1.2em; text-align:left;">',
+            ...recent.map(log =>
+                `<li><span style="color:#4f8cff;">[${formatTime(log.timestamp)}]</span> <b>${log.tool}</b> <span style="color:#888;">${JSON.stringify(log.args)}</span></li>`
+            ),
+            '</ul>'
+        ].join('');
+        bar.innerHTML = html;
+        bar.style.visibility = 'visible';
+    }
+
     // Public API
     return {
         init,
@@ -502,5 +534,6 @@ const UIController = (function() {
         showError,
         showEmptyState,
         hideEmptyState,
+        showAgentLog,
     };
 })(); 

@@ -537,6 +537,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
         }
         // Log tool call
         state.toolCallHistory.push({ tool, args, timestamp: new Date().toISOString() });
+        UIController.showAgentLog(state.toolCallHistory);
         await toolHandlers[tool](args);
         // Only continue reasoning if the last AI reply was NOT a tool call
         if (!skipContinue) {
