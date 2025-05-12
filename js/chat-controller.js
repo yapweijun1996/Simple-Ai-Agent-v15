@@ -527,7 +527,9 @@ If you understand, follow these instructions for every relevant question. Do NOT
         } catch (error) {
             console.error('Error sending message:', error);
             let userMsg = '';
-            if (error && error.message && (
+            if (error && error.message && error.message.toLowerCase().includes('timeout')) {
+                userMsg = '⏰ The AI took too long to respond. Please try again, refine your question, or check your network connection.';
+            } else if (error && error.message && (
                 error.message.includes('Failed to fetch') ||
                 error.message.includes('Service Unavailable') ||
                 error.message.includes('503') ||
