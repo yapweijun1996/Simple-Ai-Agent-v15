@@ -8,6 +8,9 @@ const Utils = (function() {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
+    // Add a module-level variable to track the timer for clearing the under-token status bar
+    let underTokenStatusTimer = null;
+
     /**
      * Decrypts text using XOR cipher
      * @param {string} ciphertext - The encrypted text
@@ -81,13 +84,26 @@ const Utils = (function() {
     }
 
     /**
-     * Updates the token usage display
+     * Updates the token usage display and shows a temporary status message under the token usage bar.
      * @param {number} totalTokens - The total tokens used
+     * Shows a status message for 2 seconds in the under-token status bar.
      */
     function updateTokenDisplay(totalTokens) {
         const tokenDisplay = document.getElementById('token-usage');
         if (tokenDisplay) {
             tokenDisplay.textContent = `Total tokens used: ${totalTokens}`;
+        }
+        // Show status under token usage
+        if (typeof UIController !== 'undefined' && typeof SettingsController !== 'undefined') {
+            const agentDetails = SettingsController.getSettings();
+            UIController.showStatusUnderToken('Token usage updated.', agentDetails);
+            if (underTokenStatusTimer) {
+                clearTimeout(underTokenStatusTimer);
+            }
+            underTokenStatusTimer = setTimeout(() => {
+                UIController.clearStatusUnderToken();
+                underTokenStatusTimer = null;
+            }, 2000);
         }
     }
 
