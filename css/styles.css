@@ -1532,4 +1532,11 @@ body:not(.light-mode) .chat-app__message-content ol ol {
 .cot-steps li {
   margin-bottom: 0.5em;
   line-height: 1.5;
+}
+
+.thinking-collapsed .cot-reasoning {
+  display: none;
+}
+.thinking-collapsed .answer-section {
+  display: block;
 } 
