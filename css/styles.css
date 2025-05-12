@@ -505,19 +505,20 @@ body:not(.light-mode) .chat-app__message.ai-message {
     border: 1px solid #b3d4fc;
     z-index: 1200;
     box-shadow: 0 4px 24px #007bff22, 0 1.5px 8px #b3d4fc33;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0s, background 0.3s;
-    visibility: hidden;
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.3s, transform 0.3s;
+    visibility: visible;
     display: flex;
     align-items: center;
     gap: 14px;
     min-height: 48px;
+    transform: translateY(0);
 }
-.chat-app__status-bar--active {
-    opacity: 1;
-    pointer-events: auto;
-    visibility: visible;
+.chat-app__status-bar.status-bar--hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
 }
 .status-bar__icon {
     display: inline-flex;
@@ -537,29 +538,27 @@ body:not(.light-mode) .chat-app__message.ai-message {
     min-width: 0;
 }
 .status-bar__close {
+    display: inline-block;
     background: none;
     border: none;
-    color: #888;
-    font-size: 1.3em;
-    margin-left: 10px;
+    color: inherit;
+    font-size: 1.2em;
     cursor: pointer;
-    border-radius: 50%;
-    width: 2em;
-    height: 2em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s, color 0.2s;
+    margin-left: 8px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+.status-bar__close[style*="display: none"] {
+    display: none !important;
 }
 .status-bar__close:hover, .status-bar__close:focus {
-    background: #eaf3ff;
-    color: #2a3a4a;
-    outline: 2px solid #4f8cff;
+    opacity: 1;
+    outline: 2px solid var(--primary-color);
 }
 /* State classes for info, error, progress */
 .status-bar--info {
-    background: rgba(234, 243, 255, 0.98);
-    color: #2a3a4a;
+    background: #eaf3ff;
+    color: #22334a;
     border: 1px solid #b3d4fc;
 }
 .status-bar--error {
@@ -568,8 +567,8 @@ body:not(.light-mode) .chat-app__message.ai-message {
     border: 1.5px solid #ff5c5c;
 }
 .status-bar--progress {
-    background: #eaf3ff;
-    color: #2a3a4a;
+    background: #f5f5f5;
+    color: #888;
     border: 1.5px solid #4f8cff;
 }
 body.dark-mode .status-bar--info {
@@ -663,18 +662,18 @@ body.dark-mode .status-bar--progress {
 
 .spinner {
   display: inline-block;
-  width: 1.2em;
-  height: 1.2em;
-  border: 3px solid var(--primary-color);
+  width: 1em;
+  height: 1em;
+  border: 2px solid #ccc;
+  border-top: 2px solid var(--primary-color);
   border-radius: 50%;
-  border-top-color: transparent;
-  animation: spin 0.8s linear infinite;
+  animation: spin 1s linear infinite;
   vertical-align: middle;
-  margin-right: 8px;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Optionally, pulse the spinner for extra feedback */

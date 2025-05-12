@@ -315,9 +315,7 @@ const UIController = (function() {
     }
 
     // --- Status Bar Logic (Refined) ---
-    // Persistent log for status bar messages
-    const statusBarLog = [];
-    let statusBarCollapsed = false;
+    let statusBarAutoDismissTimer = null;
 
     function setStatusBar(bar, { type = 'info', message = '', agentDetails = null, showSpinner = false, autoDismiss = false }) {
         if (!bar) return;
@@ -325,96 +323,59 @@ const UIController = (function() {
         const icon = bar.querySelector('.status-bar__icon');
         const msg = bar.querySelector('.status-bar__message');
         const closeBtn = bar.querySelector('.status-bar__close');
-        // State
+        // Remove all type classes
+        bar.classList.remove('status-bar--info', 'status-bar--error', 'status-bar--progress', 'status-bar--hidden');
+        // Set type class and icon
         let iconHtml = '';
-        let barClass = '';
-        let ariaRole = 'status';
-        let ariaLive = 'polite';
         if (type === 'error') {
             iconHtml = '❌';
-            barClass = 'status-bar--error';
-            ariaRole = 'alert';
-            ariaLive = 'assertive';
-            closeBtn.style.display = '';
+            bar.classList.add('status-bar--error');
+            closeBtn.style.display = 'inline-block';
         } else if (type === 'progress') {
             iconHtml = showSpinner ? '<span class="spinner" aria-hidden="true"></span>' : '⏳';
-            barClass = 'status-bar--progress';
-            // No close for progress
+            bar.classList.add('status-bar--progress');
+            closeBtn.style.display = 'none';
         } else { // info/default
             iconHtml = 'ℹ️';
-            barClass = 'status-bar--info';
-            closeBtn.style.display = '';
+            bar.classList.add('status-bar--info');
+            closeBtn.style.display = 'inline-block';
         }
-        // Add to log
-        const logEntry = {
-            type,
-            message: message + (agentDetails ? ' ' + formatAgentDetails(agentDetails) : ''),
-            iconHtml,
-            timestamp: new Date().toLocaleTimeString()
-        };
-        statusBarLog.push(logEntry);
-        // Limit log size for performance
-        if (statusBarLog.length > 100) statusBarLog.shift();
-        // Render log
-        renderStatusBarLog(bar, barClass, ariaRole, ariaLive);
+        // Set icon and message
+        icon.innerHTML = iconHtml;
+        msg.textContent = message + (agentDetails ? ' ' + formatAgentDetails(agentDetails) : '');
+        // Show bar
+        bar.classList.remove('status-bar--hidden');
         // Auto-dismiss for info
+        if (statusBarAutoDismissTimer) clearTimeout(statusBarAutoDismissTimer);
         if (type === 'info' && autoDismiss) {
-            setTimeout(() => {
+            statusBarAutoDismissTimer = setTimeout(() => {
                 clearStatusBar(bar);
-            }, 2500);
+            }, 4000);
         }
-    }
-
-    function renderStatusBarLog(bar, barClass, ariaRole, ariaLive) {
-        bar.classList.remove('status-bar--info', 'status-bar--error', 'status-bar--progress', 'chat-app__status-bar--active');
-        bar.classList.add(barClass, 'chat-app__status-bar--active');
-        bar.setAttribute('role', ariaRole);
-        bar.setAttribute('aria-live', ariaLive);
-        // Render log as a scrollable list
-        const msg = bar.querySelector('.status-bar__message');
-        const icon = bar.querySelector('.status-bar__icon');
-        icon.innerHTML = '';
-        if (statusBarCollapsed) {
-            msg.innerHTML = `<button class="status-bar__expand" aria-label="Expand log">Show Log ▼</button>`;
-            bar.querySelector('.status-bar__expand').onclick = () => {
-                statusBarCollapsed = false;
-                renderStatusBarLog(bar, barClass, ariaRole, ariaLive);
-            };
-            return;
-        }
-        let logHtml = '<div class="status-bar__log-list" style="max-height:120px;overflow-y:auto;text-align:left;">';
-        for (const entry of statusBarLog) {
-            logHtml += `<div class="status-bar__log-entry"><span class="status-bar__log-time">[${entry.timestamp}]</span> <span class="status-bar__log-icon">${entry.iconHtml}</span> <span>${entry.message}</span></div>`;
-        }
-        logHtml += '</div>';
-        logHtml += '<button class="status-bar__collapse" aria-label="Collapse log" style="margin-top:4px;">Hide Log ▲</button>';
-        logHtml += '<button class="status-bar__clear" aria-label="Clear log" style="margin-top:4px;margin-left:8px;">Clear Log</button>';
-        msg.innerHTML = logHtml;
-        // Collapse button
-        bar.querySelector('.status-bar__collapse').onclick = () => {
-            statusBarCollapsed = true;
-            renderStatusBarLog(bar, barClass, ariaRole, ariaLive);
+        // Keyboard accessibility: Esc to close if closeBtn is visible
+        bar.onkeydown = (e) => {
+            if (e.key === 'Escape' && closeBtn.style.display !== 'none') {
+                clearStatusBar(bar);
+            }
         };
-        // Clear button
-        bar.querySelector('.status-bar__clear').onclick = () => {
-            statusBarLog.length = 0;
-            renderStatusBarLog(bar, barClass, ariaRole, ariaLive);
-        };
+        // Focus bar for accessibility
+        bar.focus();
     }
 
     function clearStatusBar(bar) {
         if (!bar) return;
-        bar.classList.remove('chat-app__status-bar--active', 'status-bar--info', 'status-bar--error', 'status-bar--progress');
+        bar.classList.add('status-bar--hidden');
         bar.querySelector('.status-bar__icon').innerHTML = '';
         bar.querySelector('.status-bar__message').innerHTML = '';
         bar.querySelector('.status-bar__close').style.display = 'none';
         bar.removeAttribute('role');
         bar.removeAttribute('aria-live');
-        // Optionally clear log on close (comment out if you want to persist log after close)
-        // statusBarLog.length = 0;
+        if (statusBarAutoDismissTimer) {
+            clearTimeout(statusBarAutoDismissTimer);
+            statusBarAutoDismissTimer = null;
+        }
     }
 
-    // Attach close button listeners (for both bars)
     function setupStatusBarClose() {
         ['status-bar', 'status-bar-under-token'].forEach(id => {
             const bar = document.getElementById(id);
@@ -422,6 +383,11 @@ const UIController = (function() {
                 const closeBtn = bar.querySelector('.status-bar__close');
                 if (closeBtn) {
                     closeBtn.onclick = () => clearStatusBar(bar);
+                    closeBtn.onkeydown = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            clearStatusBar(bar);
+                        }
+                    };
                 }
             }
         });
