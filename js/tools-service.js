@@ -5,13 +5,32 @@
 const ToolsService = (function() {
     'use strict';
 
-    // Use proxy list from Utils
-    let proxies = Utils.corsProxies;
-    // Ensure proxies is always an array/iterable
-    if (!proxies || typeof proxies[Symbol.iterator] !== 'function') {
-        console.warn('Proxies is not iterable, falling back to Utils.getCorsProxies()');
-        proxies = Utils.getCorsProxies();
-    }
+    // Proxy list for bypassing CORS
+    const proxies = [
+      { name: 'CodeTabs',          formatUrl: url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,                      parseResponse: async res => res.text() },
+      { name: 'AllOrigins (win)',  formatUrl: url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,                parseResponse: async res => res.text() },
+      { name: 'AllOrigins (cf)',   formatUrl: url => `https://api.allorigins.cf/raw?url=${encodeURIComponent(url)}`,                parseResponse: async res => res.text() },
+      { name: 'AllOrigins (pro)',  formatUrl: url => `https://api.allorigins.pro/raw?url=${encodeURIComponent(url)}`,               parseResponse: async res => res.text() },
+      { name: 'AllOrigins (app)',  formatUrl: url => `https://allorigins.appspot.com/raw?url=${encodeURIComponent(url)}`,            parseResponse: async res => res.text() },
+      { name: 'CORS Anywhere',     formatUrl: url => `https://cors-anywhere.herokuapp.com/${url}`,                                parseResponse: async res => res.text() },
+      { name: 'ThingProxy FB',     formatUrl: url => `https://thingproxy.freeboard.io/fetch/${url}`,                       parseResponse: async res => res.text() },
+      { name: 'ThingProxy PW',     formatUrl: url => `https://thingproxy.pw/fetch/${url}`,                                 parseResponse: async res => res.text() },
+      { name: 'CORSProxy.io',      formatUrl: url => `https://corsproxy.io/?${url}`,                                     parseResponse: async res => res.text() },
+      { name: 'CORS.bridged.cc',   formatUrl: url => `https://cors.bridged.cc/${url}`,                                    parseResponse: async res => res.text() },
+      { name: 'YACDN',             formatUrl: url => `https://yacdn.org/proxy/${url}`,                                    parseResponse: async res => res.text() },
+      { name: 'JSONP afeld',       formatUrl: url => `https://jsonp.afeld.me/?url=${encodeURIComponent(url)}`,          parseResponse: async res => (await res.json()).contents },
+      { name: 'CORS Proxy HTML',   formatUrl: url => `https://cors-proxy.htmldriven.com/?url=${encodeURIComponent(url)}`, parseResponse: async res => res.text() },
+      { name: 'AllOrigins .net',   formatUrl: url => `https://api.allorigins.net/raw?url=${encodeURIComponent(url)}`,               parseResponse: async res => res.text() },
+      { name: 'AllOrigins .io',    formatUrl: url => `https://api.allorigins.io/raw?url=${encodeURIComponent(url)}`,                parseResponse: async res => res.text() },
+      { name: 'AllOrigins .eu',    formatUrl: url => `https://api.allorigins.eu/raw?url=${encodeURIComponent(url)}`,                parseResponse: async res => res.text() },
+      { name: 'ProxyCORS',         formatUrl: url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,           parseResponse: async res => res.text() },
+      { name: 'RainDrop CORS',     formatUrl: url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,                parseResponse: async res => res.text() },
+      { name: 'DirectNoCORS',      formatUrl: url => url,                                                                parseResponse: async res => {
+                                                                                                          const text = await res.text().catch(()=> '');
+                                                                                                          return text;
+                                                                                                        }, options: { mode: 'no-cors' } },
+      { name: 'FinalFallback',     formatUrl: url => url,                                                                parseResponse: async res => res.text() }
+    ];
 
     function getFinalUrl(rawUrl) {
       try {
@@ -24,61 +43,24 @@ const ToolsService = (function() {
     }
 
     /**
-     * Performs a search via the specified engine (duckduckgo, google, bing), streams results as found.
+     * Performs a DuckDuckGo HTML search via proxies.
      * @param {string} query
-     * @param {function} onResult - Callback for each result as it's found
-     * @param {string} [engine] - Search engine: 'duckduckgo', 'google', or 'bing'
      * @returns {Promise<Array<{title:string,url:string,snippet:string}>>}
      */
-    async function webSearch(query, onResult, engine = 'duckduckgo') {
-      let searchUrl, parseResults;
-      if (engine === 'google') {
-        searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en`;
-        parseResults = function(htmlString) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(htmlString, 'text/html');
-          const items = doc.querySelectorAll('div.g');
-          const results = [];
-          items.forEach(item => {
-            const anchor = item.querySelector('a');
-            const titleElem = item.querySelector('h3');
-            if (!anchor || !titleElem) return;
-            const href = anchor.href;
-            const title = titleElem.textContent.trim();
-            const snippetElem = item.querySelector('.VwiC3b, .IsZvec');
-            const snippet = snippetElem ? snippetElem.textContent.trim() : '';
-            results.push({ title, url: href, snippet });
-          });
-          return results;
-        };
-      } else if (engine === 'bing') {
-        searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
-        parseResults = function(htmlString) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(htmlString, 'text/html');
-          const items = doc.querySelectorAll('li.b_algo');
-          const results = [];
-          items.forEach(item => {
-            const anchor = item.querySelector('a');
-            const titleElem = item.querySelector('h2');
-            if (!anchor || !titleElem) return;
-            const href = anchor.href;
-            const title = titleElem.textContent.trim();
-            const snippetElem = item.querySelector('p');
-            const snippet = snippetElem ? snippetElem.textContent.trim() : '';
-            results.push({ title, url: href, snippet });
-          });
-          return results;
-        };
-      } else {
-        // Default to DuckDuckGo
-        searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-        parseResults = function(htmlString) {
+    async function webSearch(query) {
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+      for (const proxy of proxies) {
+        try {
+          const response = await fetch(proxy.formatUrl(ddgUrl));
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const htmlString = await proxy.parseResponse(response);
           const parser = new DOMParser();
           const doc = parser.parseFromString(htmlString, 'text/html');
           const container = doc.getElementById('links');
-          if (!container) return [];
+          if (!container) throw new Error('No results container');
           const items = container.querySelectorAll('div.result');
+          if (!items.length) throw new Error('No results');
+
           const results = [];
           items.forEach(item => {
             const anchor = item.querySelector('a.result__a');
@@ -90,26 +72,11 @@ const ToolsService = (function() {
             results.push({ title, url: href, snippet });
           });
           return results;
-        };
-      }
-      let allResults = [];
-      for (const proxy of proxies) {
-        try {
-          const response = await Utils.fetchWithProxyRetry(searchUrl, {}, [proxy]);
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const htmlString = await response.text();
-          const results = parseResults(htmlString);
-          if (!results.length) throw new Error('No results');
-          results.forEach(result => { if (onResult) onResult(result); });
-          return results;
         } catch (err) {
-          if (allResults.length) {
-            if (onResult) allResults.forEach(r => onResult(r));
-            return allResults;
-          }
+          console.warn(`Proxy ${proxy.name} failed: ${err.message}`);
         }
       }
-      throw new Error('All proxies failed.\n\nTip: Set up your own CORS proxy in Settings for reliable web search and instant answers.');
+      throw new Error('All proxies failed');
     }
 
     /**
@@ -120,9 +87,9 @@ const ToolsService = (function() {
     async function readUrl(url) {
       for (const proxy of proxies) {
         try {
-          const response = await Utils.fetchWithProxyRetry(url, {}, [proxy]);
+          const response = await fetch(proxy.formatUrl(url));
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const htmlString = await response.text();
+          const htmlString = await proxy.parseResponse(response);
           const parser = new DOMParser();
           const doc = parser.parseFromString(htmlString, 'text/html');
           // Remove <script> and <style> elements
@@ -139,7 +106,7 @@ const ToolsService = (function() {
           const resultText = texts.join('\n\n').trim();
           return resultText;
         } catch (err) {
-          // Continue to next proxy
+          console.warn(`Proxy ${proxy.name} failed: ${err.message}`);
         }
       }
       throw new Error('All proxies failed');
