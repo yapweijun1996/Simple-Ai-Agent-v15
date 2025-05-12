@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Simple AI Chat Agent</title>
     <meta name="description" content="Interactive AI chat assistant with multiple language models including GPT-4.1, Gemini, and Gemma.">
     <meta name="keywords" content="AI chat, GPT, Gemini, Gemma, AI assistant">
@@ -68,7 +68,7 @@
         <div id="token-usage" class="chat-app__token-usage">Total tokens used: 0</div>
 
         <!-- Status Bar Under Token Usage -->
-        <div id="status-bar-under-token" class="chat-app__status-bar" role="status" aria-live="polite">
+        <div id="status-bar-under-token" class="chat-app__status-bar" style="display: none;">
             <span class="status-bar__icon" aria-hidden="true"></span>
             <span class="status-bar__message"></span>
             <button class="status-bar__close" aria-label="Close status bar" style="display:none;">×</button>
