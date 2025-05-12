@@ -522,6 +522,14 @@ const UIController = (function() {
         clearStatusBar(document.getElementById('status-bar-under-token'));
     }
 
+    // Status bar control for main status bar
+    function showStatus(message, agentDetails) {
+        setStatusBar(document.getElementById('status-bar'), { type: 'info', message, agentDetails, autoDismiss: true });
+    }
+    function clearStatus() {
+        clearStatusBar(document.getElementById('status-bar'));
+    }
+
     // Public API
     return {
         init,
