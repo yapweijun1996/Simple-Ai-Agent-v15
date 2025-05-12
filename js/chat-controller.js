@@ -61,135 +61,146 @@ Begin Reasoning Now:
     // Tool handler registry
     const toolHandlers = {
         web_search: async function(args) {
-            debugLog('Tool: web_search', args);
-            if (!args.query || typeof args.query !== 'string' || !args.query.trim()) {
-                UIController.addMessage('ai', 'Error: Invalid web_search query.');
-                return;
-            }
-            const engine = args.engine || 'duckduckgo';
-            const userQuestion = state.originalUserQuestion || args.query;
-            let queriesToTry = [args.query];
-            let aiSuggestedQueries = [];
-            // Ask AI for 2 alternative queries
             try {
-                const selectedModel = SettingsController.getSettings().selectedModel;
-                let aiReply = '';
-                // Improved prompt with examples and explicit instructions
-                const prompt = `Given the user question: "${userQuestion}", suggest 2 alternative web search queries that are:\n- Different in wording, focus, or approach (not just minor rewordings)\n- Likely to retrieve different or complementary information\n- Use synonyms, related topics, or different angles if possible\n\nFor each, reply with the query on a new line. Avoid trivial changes.\n\nExample:\nUser question: \"What are the health benefits of green tea?\"\nGood alternatives:\n- Scientific studies on green tea and health\n- Green tea antioxidants effects on the body\nBad alternatives:\n- What are the health benefits of green tea? (identical)\n- Green tea health benefits (trivial rewording)`;
-                if (selectedModel.startsWith('gpt')) {
-                    const res = await ApiService.sendOpenAIRequest(selectedModel, [
-                        { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
-                        { role: 'user', content: prompt }
-                    ]);
-                    aiReply = res.choices[0].message.content.trim();
-                } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
-                    const session = ApiService.createGeminiSession(selectedModel);
-                    const chatHistory = [
-                        { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
-                        { role: 'user', content: prompt }
-                    ];
-                    const result = await session.sendMessage(prompt, chatHistory);
-                    const candidate = result.candidates[0];
-                    if (candidate.content.parts) {
-                        aiReply = candidate.content.parts.map(p => p.text).join(' ').trim();
-                    } else if (candidate.content.text) {
-                        aiReply = candidate.content.text.trim();
-                    }
+                debugLog('Tool: web_search', args);
+                if (!args.query || typeof args.query !== 'string' || !args.query.trim()) {
+                    UIController.addMessage('ai', 'Error: Invalid web_search query.');
+                    return;
                 }
-                // Filter out suggestions that are too similar to the original or to each other
-                aiSuggestedQueries = aiReply.split('\n').map(q => q.trim()).filter(q => q && !queriesToTry.includes(q));
-                // Use Levenshtein distance and length ratio to filter
-                const minDistance = 5; // Minimum edit distance to consider as different
-                const minLengthRatio = 0.7;
-                aiSuggestedQueries = aiSuggestedQueries.filter(q => {
-                    const dist = Utils.levenshtein(q.toLowerCase(), args.query.toLowerCase());
-                    const lenRatio = Math.min(q.length, args.query.length) / Math.max(q.length, args.query.length);
-                    return dist >= minDistance || lenRatio < minLengthRatio;
-                });
-                // Remove near-duplicates among suggestions
-                const uniqueSuggestions = [];
-                aiSuggestedQueries.forEach(q => {
-                    if (!uniqueSuggestions.some(uq => {
-                        const dist = Utils.levenshtein(q.toLowerCase(), uq.toLowerCase());
-                        const lenRatio = Math.min(q.length, uq.length) / Math.max(q.length, uq.length);
-                        return dist < minDistance && lenRatio >= minLengthRatio;
-                    })) {
-                        uniqueSuggestions.push(q);
-                    }
-                });
-                aiSuggestedQueries = uniqueSuggestions;
-                queriesToTry = queriesToTry.concat(aiSuggestedQueries);
-                debugLog('AI suggested alternative queries (filtered):', aiSuggestedQueries);
-            } catch (err) {
-                debugLog('Error getting alternative queries from AI:', err);
-            }
-            let allResults = [];
-            for (const query of queriesToTry) {
-                UIController.showSpinner(`Searching (${engine}) for "${query}"...`);
-                UIController.showStatus(`Searching (${engine}) for "${query}"...`);
-                let results = [];
+                const engine = args.engine || 'duckduckgo';
+                const userQuestion = state.originalUserQuestion || args.query;
+                let queriesToTry = [args.query];
+                let aiSuggestedQueries = [];
+                // Ask AI for 2 alternative queries
                 try {
-                    const streamed = [];
-                    // --- Add timeout here ---
-                    const SEARCH_TIMEOUT_MS = 15000; // 15 seconds
-                    results = await Promise.race([
-                        ToolsService.webSearch(query, (result) => {
-                            streamed.push(result);
-                            // Pass highlight flag if this index is in highlightedResultIndices
-                            const idx = streamed.length - 1;
-                            UIController.addSearchResult(result, (url) => {
-                                processToolCall({ tool: 'read_url', arguments: { url, start: 0, length: 1122 } });
-                            }, state.highlightedResultIndices.has(idx));
-                        }, engine),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Search timed out after 15 seconds.')), SEARCH_TIMEOUT_MS))
-                    ]);
-                    debugLog(`Web search results for query [${query}]:`, results);
-                } catch (err) {
-                    UIController.hideSpinner();
-                    if (err && err.message && (err.message === 'All proxies failed' || err.message.includes('timed out'))) {
-                        UIController.showError('Could not fetch page due to network/proxy error or timeout. Please try again later.');
-                        // Add retry button
-                        UIController.addHtmlMessage('ai', `Web search failed for "${query}": ${err.message} <button class="retry-btn" style="margin-left:10px;">Retry</button>`);
-                        setTimeout(() => {
-                            const retryBtn = document.querySelector('.retry-btn');
-                            if (retryBtn) {
-                                retryBtn.onclick = () => {
-                                    retryBtn.disabled = true;
-                                    processToolCall({ tool: 'web_search', arguments: { query, engine } });
-                                };
-                            }
-                        }, 100);
-                    } else {
-                        UIController.addMessage('ai', `Web search failed for "${query}": ${err.message}`);
+                    const selectedModel = SettingsController.getSettings().selectedModel;
+                    let aiReply = '';
+                    // Improved prompt with examples and explicit instructions
+                    const prompt = `Given the user question: "${userQuestion}", suggest 2 alternative web search queries that are:\n- Different in wording, focus, or approach (not just minor rewordings)\n- Likely to retrieve different or complementary information\n- Use synonyms, related topics, or different angles if possible\n\nFor each, reply with the query on a new line. Avoid trivial changes.\n\nExample:\nUser question: \"What are the health benefits of green tea?\"\nGood alternatives:\n- Scientific studies on green tea and health\n- Green tea antioxidants effects on the body\nBad alternatives:\n- What are the health benefits of green tea? (identical)\n- Green tea health benefits (trivial rewording)`;
+                    if (selectedModel.startsWith('gpt')) {
+                        const res = await ApiService.sendOpenAIRequest(selectedModel, [
+                            { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
+                            { role: 'user', content: prompt }
+                        ]);
+                        aiReply = res.choices[0].message.content.trim();
+                    } else if (selectedModel.startsWith('gemini') || selectedModel.startsWith('gemma')) {
+                        const session = ApiService.createGeminiSession(selectedModel);
+                        const chatHistory = [
+                            { role: 'system', content: 'You are an assistant that helps improve web search queries.' },
+                            { role: 'user', content: prompt }
+                        ];
+                        const result = await session.sendMessage(prompt, chatHistory);
+                        const candidate = result.candidates[0];
+                        if (candidate.content.parts) {
+                            aiReply = candidate.content.parts.map(p => p.text).join(' ').trim();
+                        } else if (candidate.content.text) {
+                            aiReply = candidate.content.text.trim();
+                        }
                     }
-                    state.chatHistory.push({ role: 'assistant', content: `Web search failed for "${query}": ${err.message}` });
-                    continue;
+                    // Filter out suggestions that are too similar to the original or to each other
+                    aiSuggestedQueries = aiReply.split('\n').map(q => q.trim()).filter(q => q && !queriesToTry.includes(q));
+                    // Use Levenshtein distance and length ratio to filter
+                    const minDistance = 5; // Minimum edit distance to consider as different
+                    const minLengthRatio = 0.7;
+                    aiSuggestedQueries = aiSuggestedQueries.filter(q => {
+                        const dist = Utils.levenshtein(q.toLowerCase(), args.query.toLowerCase());
+                        const lenRatio = Math.min(q.length, args.query.length) / Math.max(q.length, args.query.length);
+                        return dist >= minDistance || lenRatio < minLengthRatio;
+                    });
+                    // Remove near-duplicates among suggestions
+                    const uniqueSuggestions = [];
+                    aiSuggestedQueries.forEach(q => {
+                        if (!uniqueSuggestions.some(uq => {
+                            const dist = Utils.levenshtein(q.toLowerCase(), uq.toLowerCase());
+                            const lenRatio = Math.min(q.length, uq.length) / Math.max(q.length, uq.length);
+                            return dist < minDistance && lenRatio >= minLengthRatio;
+                        })) {
+                            uniqueSuggestions.push(q);
+                        }
+                    });
+                    aiSuggestedQueries = uniqueSuggestions;
+                    queriesToTry = queriesToTry.concat(aiSuggestedQueries);
+                    debugLog('AI suggested alternative queries (filtered):', aiSuggestedQueries);
+                } catch (err) {
+                    debugLog('Error getting alternative queries from AI:', err);
                 }
-                allResults = allResults.concat(results);
-            }
-            UIController.hideSpinner();
-            UIController.clearStatus();
-            if (!allResults.length) {
-                UIController.addMessage('ai', `No search results found for "${args.query}" after trying multiple queries.`);
-            }
-            // Remove duplicate results by URL
-            const uniqueResults = [];
-            const seenUrls = new Set();
-            debugLog({ step: 'deduplication', before: allResults });
-            for (const r of allResults) {
-                if (!seenUrls.has(r.url)) {
-                    uniqueResults.push(r);
-                    seenUrls.add(r.url);
+                let allResults = [];
+                for (const query of queriesToTry) {
+                    UIController.showSpinner(`Searching (${engine}) for "${query}"...`);
+                    UIController.showStatus(`Searching (${engine}) for "${query}"...`);
+                    let results = [];
+                    try {
+                        const streamed = [];
+                        // --- Add timeout here ---
+                        const SEARCH_TIMEOUT_MS = 15000; // 15 seconds
+                        results = await Promise.race([
+                            ToolsService.webSearch(query, (result) => {
+                                streamed.push(result);
+                                // Pass highlight flag if this index is in highlightedResultIndices
+                                const idx = streamed.length - 1;
+                                UIController.addSearchResult(result, (url) => {
+                                    processToolCall({ tool: 'read_url', arguments: { url, start: 0, length: 1122 } });
+                                }, state.highlightedResultIndices.has(idx));
+                            }, engine),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('Search timed out after 15 seconds.')), SEARCH_TIMEOUT_MS))
+                        ]);
+                        debugLog(`Web search results for query [${query}]:`, results);
+                    } catch (err) {
+                        UIController.hideSpinner();
+                        debugLog('Web search error:', err);
+                        if (err && err.message && (err.message === 'All proxies failed' || err.message.includes('timed out'))) {
+                            UIController.showError('Could not fetch page due to network/proxy error or timeout. Please try again later.');
+                            // Add retry button
+                            UIController.addHtmlMessage('ai', `Web search failed for "${query}": ${err.message} <button class="retry-btn" style="margin-left:10px;">Retry</button>`);
+                            setTimeout(() => {
+                                const retryBtn = document.querySelector('.retry-btn');
+                                if (retryBtn) {
+                                    retryBtn.onclick = () => {
+                                        retryBtn.disabled = true;
+                                        processToolCall({ tool: 'web_search', arguments: { query, engine } });
+                                    };
+                                }
+                            }, 100);
+                        } else {
+                            UIController.addMessage('ai', `Web search failed for "${query}": ${err && err.message ? err.message : 'Unknown error.'}`);
+                        }
+                        state.chatHistory.push({ role: 'assistant', content: `Web search failed for "${query}": ${err && err.message ? err.message : 'Unknown error.'}` });
+                        continue;
+                    }
+                    allResults = allResults.concat(results);
                 }
+                UIController.hideSpinner();
+                UIController.clearStatus();
+                if (!allResults.length) {
+                    UIController.addMessage('ai', `No search results found for "${args.query}" after trying multiple queries.`);
+                }
+                // Remove duplicate results by URL
+                const uniqueResults = [];
+                const seenUrls = new Set();
+                debugLog({ step: 'deduplication', before: allResults });
+                for (const r of allResults) {
+                    if (!seenUrls.has(r.url)) {
+                        uniqueResults.push(r);
+                        seenUrls.add(r.url);
+                    }
+                }
+                debugLog({ step: 'deduplication', after: uniqueResults });
+                const plainTextResults = uniqueResults.map((r, i) => `${i+1}. ${r.title} (${r.url}) - ${r.snippet}`).join('\n');
+                state.chatHistory.push({ role: 'assistant', content: `Search results for "${args.query}" (total ${uniqueResults.length}):\n${plainTextResults}` });
+                state.lastSearchResults = uniqueResults;
+                debugLog({ step: 'suggestResultsToRead', results: uniqueResults });
+                // Prompt AI to suggest which results to read
+                await suggestResultsToRead(uniqueResults, args.query);
+            } catch (err) {
+                debugLog('Top-level web_search error:', err);
+                UIController.hideSpinner();
+                UIController.clearStatus();
+                UIController.addMessage('ai', `Web search failed: ${err && err.message ? err.message : 'Unknown error.'}`);
+            } finally {
+                UIController.hideSpinner();
+                UIController.clearStatus();
+                setInputState(true);
             }
-            debugLog({ step: 'deduplication', after: uniqueResults });
-            const plainTextResults = uniqueResults.map((r, i) => `${i+1}. ${r.title} (${r.url}) - ${r.snippet}`).join('\n');
-            state.chatHistory.push({ role: 'assistant', content: `Search results for "${args.query}" (total ${uniqueResults.length}):\n${plainTextResults}` });
-            state.lastSearchResults = uniqueResults;
-            debugLog({ step: 'suggestResultsToRead', results: uniqueResults });
-            // Prompt AI to suggest which results to read
-            await suggestResultsToRead(uniqueResults, args.query);
-            UIController.hideSearchResultsLoading();
         },
         read_url: async function(args) {
             debugLog('Tool: read_url', args);
