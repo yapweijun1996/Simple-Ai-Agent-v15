@@ -16,6 +16,10 @@ const UIController = (function() {
     
     let summarizeBtn = null;
     
+    // Helper to manage search result groups
+    let currentSearchGroup = null;
+    let searchGroupCount = 0;
+    
     /**
      * Initializes the UI controller
      */
@@ -425,7 +429,7 @@ const UIController = (function() {
     }
 
     /**
-     * Adds a search result to the chat window with a 'Read More' button
+     * Adds a search result to the chat window with a 'Show/Hide search results' toggle
      * @param {Object} result - {title, url, snippet}
      * @param {Function} onReadMore - Callback when 'Read More' is clicked (optional)
      */
@@ -433,9 +437,58 @@ const UIController = (function() {
         if (shownUrls.has(result.url)) return;
         shownUrls.add(result.url);
         const chatWindow = document.getElementById('chat-window');
+
+        // If no current group or last group is full, create a new group
+        if (!currentSearchGroup || currentSearchGroup.dataset.closed === 'true') {
+            searchGroupCount++;
+            // Create group container
+            const groupContainer = document.createElement('div');
+            groupContainer.className = 'search-result-group';
+            groupContainer.style.margin = '12px 0';
+            groupContainer.style.border = '1px solid var(--border-color, #333)';
+            groupContainer.style.borderRadius = '8px';
+            groupContainer.style.background = 'var(--background-secondary, #181a20)';
+            groupContainer.style.overflow = 'hidden';
+            groupContainer.style.padding = '0';
+            groupContainer.dataset.closed = 'false';
+
+            // Toggle button
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'search-result-toggle-btn';
+            toggleBtn.textContent = 'Show search results';
+            toggleBtn.setAttribute('aria-expanded', 'false');
+            toggleBtn.style.display = 'block';
+            toggleBtn.style.width = '100%';
+            toggleBtn.style.padding = '8px 0';
+            toggleBtn.style.background = 'var(--background-tertiary, #23262f)';
+            toggleBtn.style.border = 'none';
+            toggleBtn.style.cursor = 'pointer';
+            toggleBtn.style.fontWeight = 'bold';
+            toggleBtn.style.fontSize = '1em';
+            toggleBtn.style.color = 'var(--primary-color, #fff)';
+            toggleBtn.addEventListener('click', function() {
+                const isClosed = groupContainer.dataset.closed === 'true';
+                groupContainer.dataset.closed = isClosed ? 'false' : 'true';
+                resultsWrapper.style.display = isClosed ? '' : 'none';
+                toggleBtn.textContent = isClosed ? 'Hide search results' : 'Show search results';
+                toggleBtn.setAttribute('aria-expanded', isClosed ? 'true' : 'false');
+            });
+
+            // Results wrapper (hidden by default)
+            const resultsWrapper = document.createElement('div');
+            resultsWrapper.className = 'search-results-wrapper';
+            resultsWrapper.style.display = 'none';
+            groupContainer.appendChild(toggleBtn);
+            groupContainer.appendChild(resultsWrapper);
+            chatWindow.appendChild(groupContainer);
+            currentSearchGroup = groupContainer;
+        }
+
+        // Add the search result article to the current group
+        const resultsWrapper = currentSearchGroup.querySelector('.search-results-wrapper');
         const article = document.createElement('article');
         article.className = 'chat-app__message ai-message search-result';
-        // Improved card structure
+        // Card structure
         const card = document.createElement('div');
         card.className = 'search-result-card';
         // Header with icon and link
@@ -455,7 +508,7 @@ const UIController = (function() {
         card.appendChild(snippetDiv);
         // Removed: Read More button
         article.appendChild(card);
-        chatWindow.appendChild(article);
+        resultsWrapper.appendChild(article);
         article.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
