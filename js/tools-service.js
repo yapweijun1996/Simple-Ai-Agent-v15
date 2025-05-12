@@ -155,5 +155,5 @@ const ToolsService = (function() {
       return response.json();
     }
 
-    return { webSearch, readUrl, instantAnswer };
+    return { webSearch, readUrl, instantAnswer, proxies, getProxyUrls: () => proxies.map(p => p.formatUrl('').replace(/\$\{\(url\)\}/, '')) };
 })(); 

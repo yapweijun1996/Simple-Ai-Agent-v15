@@ -257,29 +257,8 @@ const Utils = (function() {
         }
     }
 
-    // Add CORS proxy list and proxy-based retry helper
-    const corsProxies = [
-        // Direct fetch first
-        '',
-        // Widely used public CORS proxies
-        'https://cors-anywhere.herokuapp.com/',
-        'https://jsonp.afeld.me/?url=',
-        'https://api.allorigins.win/raw?url=',
-        'https://api.allorigins.xyz/raw?url=',
-        'https://corsproxy.io/?',
-        'https://thingproxy.freeboard.io/fetch/?url=',
-        'https://cors.eu.org/',
-        'https://api.codetabs.com/v1/proxy?quest=',
-        'https://yacdn.org/proxy/',
-        'https://cors.bridged.cc/',
-        'https://cors.sho.sh/',
-        'https://cors.ironproxy.xyz/',
-        'https://norobe-cors-anywhere.herokuapp.com/',
-        'https://corsproxy.github.io/?url=',
-        'https://cors-proxy.elfsight.com/'
-    ];
-
-    async function fetchWithProxyRetry(resource, options = {}, proxies = corsProxies, retries = proxies.length, retryDelay = 1000, timeout = 10000) {
+    // Update fetchWithProxyRetry to use ToolsService.getProxyUrls() as default
+    async function fetchWithProxyRetry(resource, options = {}, proxies = ToolsService.getProxyUrls(), retries = proxies.length, retryDelay = 1000, timeout = 10000) {
         let lastError;
         for (let attempt = 1; attempt <= retries; attempt++) {
             const prefix = proxies[(attempt - 1) % proxies.length];
