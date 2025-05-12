@@ -6,7 +6,12 @@ const ToolsService = (function() {
     'use strict';
 
     // Use proxy list from Utils
-    const proxies = Utils.corsProxies;
+    let proxies = Utils.corsProxies;
+    // Ensure proxies is always an array/iterable
+    if (!proxies || typeof proxies[Symbol.iterator] !== 'function') {
+        console.warn('Proxies is not iterable, falling back to Utils.getCorsProxies()');
+        proxies = Utils.getCorsProxies();
+    }
 
     function getFinalUrl(rawUrl) {
       try {
