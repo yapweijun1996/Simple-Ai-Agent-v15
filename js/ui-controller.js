@@ -319,6 +319,8 @@ const UIController = (function() {
 
     function setStatusBar(bar, { type = 'info', message = '', agentDetails = null, showSpinner = false, autoDismiss = false }) {
         if (!bar) return;
+        // Ensure the bar is visible
+        bar.style.display = '';
         // Elements
         const icon = bar.querySelector('.status-bar__icon');
         const msg = bar.querySelector('.status-bar__message');
@@ -370,6 +372,7 @@ const UIController = (function() {
         bar.querySelector('.status-bar__close').style.display = 'none';
         bar.removeAttribute('role');
         bar.removeAttribute('aria-live');
+        bar.style.display = 'none';
         if (statusBarAutoDismissTimer) {
             clearTimeout(statusBarAutoDismissTimer);
             statusBarAutoDismissTimer = null;
