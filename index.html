@@ -72,9 +72,9 @@
         <div id="status-bar" class="chat-app__status-bar" role="status" aria-live="polite" style="visibility:hidden;"></div>
 
         <!-- Chat Controls Component -->
-        <footer id="controls" class="chat-app__controls">
-            <textarea id="message-input" class="chat-app__message-input" rows="1" placeholder="Type your message here" aria-label="Message Input"></textarea>
-            <button id="send-button" class="chat-app__send-button">Send</button>
+        <footer id="controls" class="chat-app__controls" role="form" aria-label="Chat message input area">
+            <textarea id="message-input" class="chat-app__message-input" rows="1" placeholder="Type your message here" aria-label="Message Input" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';"></textarea>
+            <button id="send-button" class="chat-app__send-button" aria-label="Send message">Send</button>
         </footer>
     </main>
 
