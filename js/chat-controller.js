@@ -100,7 +100,7 @@ Begin Reasoning Now:
                 aiSuggestedQueries = aiReply.split('\n').map(q => q.trim()).filter(q => q && !queriesToTry.includes(q));
                 // Use Levenshtein distance and length ratio to filter
                 const minDistance = 5; // Minimum edit distance to consider as different
-                const minLengthRatio = 0.7; // At least 70% different in length
+                const minLengthRatio = 0.7;
                 aiSuggestedQueries = aiSuggestedQueries.filter(q => {
                     const dist = Utils.levenshtein(q.toLowerCase(), args.query.toLowerCase());
                     const lenRatio = Math.min(q.length, args.query.length) / Math.max(q.length, args.query.length);
@@ -130,21 +130,38 @@ Begin Reasoning Now:
                 let results = [];
                 try {
                     const streamed = [];
-                    results = await ToolsService.webSearch(query, (result) => {
-                        streamed.push(result);
-                        // Pass highlight flag if this index is in highlightedResultIndices
-                        const idx = streamed.length - 1;
-                        UIController.addSearchResult(result, (url) => {
-                            processToolCall({ tool: 'read_url', arguments: { url, start: 0, length: 1122 } });
-                        }, state.highlightedResultIndices.has(idx));
-                    }, engine);
+                    // --- Add timeout here ---
+                    const SEARCH_TIMEOUT_MS = 15000; // 15 seconds
+                    results = await Promise.race([
+                        ToolsService.webSearch(query, (result) => {
+                            streamed.push(result);
+                            // Pass highlight flag if this index is in highlightedResultIndices
+                            const idx = streamed.length - 1;
+                            UIController.addSearchResult(result, (url) => {
+                                processToolCall({ tool: 'read_url', arguments: { url, start: 0, length: 1122 } });
+                            }, state.highlightedResultIndices.has(idx));
+                        }, engine),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Search timed out after 15 seconds.')), SEARCH_TIMEOUT_MS))
+                    ]);
                     debugLog(`Web search results for query [${query}]:`, results);
                 } catch (err) {
                     UIController.hideSpinner();
-                    if (err && err.message && err.message === 'All proxies failed') {
-                        UIController.showError('Could not fetch page due to network/proxy error. Please try again later.');
+                    if (err && err.message && (err.message === 'All proxies failed' || err.message.includes('timed out'))) {
+                        UIController.showError('Could not fetch page due to network/proxy error or timeout. Please try again later.');
+                        // Add retry button
+                        UIController.addHtmlMessage('ai', `Web search failed for "${query}": ${err.message} <button class="retry-btn" style="margin-left:10px;">Retry</button>`);
+                        setTimeout(() => {
+                            const retryBtn = document.querySelector('.retry-btn');
+                            if (retryBtn) {
+                                retryBtn.onclick = () => {
+                                    retryBtn.disabled = true;
+                                    processToolCall({ tool: 'web_search', arguments: { query, engine } });
+                                };
+                            }
+                        }, 100);
+                    } else {
+                        UIController.addMessage('ai', `Web search failed for "${query}": ${err.message}`);
                     }
-                    UIController.addMessage('ai', `Web search failed for "${query}": ${err.message}`);
                     state.chatHistory.push({ role: 'assistant', content: `Web search failed for "${query}": ${err.message}` });
                     continue;
                 }
