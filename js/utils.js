@@ -207,7 +207,13 @@ const Utils = (function() {
         return String(str).replace(/[&<>"']/g, s => map[s]);
     }
 
-    // Add fetch helpers for timeout and retry
+    /**
+     * Fetches a resource with a timeout using AbortController.
+     * @param {string} resource - The resource URL.
+     * @param {Object} [options={}] - Fetch options.
+     * @param {number} [timeout=10000] - Timeout in ms.
+     * @returns {Promise<Response>} - The fetch response.
+     */
     async function fetchWithTimeout(resource, options = {}, timeout = 10000) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
@@ -219,6 +225,15 @@ const Utils = (function() {
         }
     }
 
+    /**
+     * Fetches a resource with retry and timeout logic.
+     * @param {string} url - The resource URL.
+     * @param {Object} [options={}] - Fetch options.
+     * @param {number} [maxAttempts=3] - Max retry attempts.
+     * @param {number} [delay=1000] - Delay between retries in ms.
+     * @param {number} [timeout=10000] - Timeout in ms.
+     * @returns {Promise<Response>} - The fetch response.
+     */
     async function fetchWithRetry(url, options = {}, maxAttempts = 3, delay = 1000, timeout = 10000) {
         let attempt = 0;
         while (attempt < maxAttempts) {
@@ -241,11 +256,12 @@ const Utils = (function() {
         }
     }
 
-    // Add CORS proxy list and proxy-based retry helper
+    /**
+     * List of CORS proxies for fetchWithProxyRetry.
+     * @type {string[]}
+     */
     const corsProxies = [
-        // Direct fetch first
         '',
-        // Widely used public CORS proxies
         'https://cors-anywhere.herokuapp.com/',
         'https://jsonp.afeld.me/?url=',
         'https://api.allorigins.win/raw?url=',
@@ -263,6 +279,16 @@ const Utils = (function() {
         'https://cors-proxy.elfsight.com/'
     ];
 
+    /**
+     * Fetches a resource using a list of CORS proxies with retry logic.
+     * @param {string} resource - The resource URL.
+     * @param {Object} [options={}] - Fetch options.
+     * @param {string[]} [proxies=corsProxies] - List of proxy prefixes.
+     * @param {number} [retries=proxies.length] - Number of retries.
+     * @param {number} [retryDelay=1000] - Delay between retries in ms.
+     * @param {number} [timeout=10000] - Timeout in ms.
+     * @returns {Promise<Response>} - The fetch response.
+     */
     async function fetchWithProxyRetry(resource, options = {}, proxies = corsProxies, retries = proxies.length, retryDelay = 1000, timeout = 10000) {
         let lastError;
         for (let attempt = 1; attempt <= retries; attempt++) {
