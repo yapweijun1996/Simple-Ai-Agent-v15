@@ -507,18 +507,15 @@ body:not(.light-mode) .chat-app__message.ai-message {
     box-shadow: 0 4px 24px #007bff22, 0 1.5px 8px #b3d4fc33;
     opacity: 1;
     pointer-events: auto;
-    transition: opacity 0.3s, transform 0.3s;
     visibility: visible;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 14px;
     min-height: 48px;
-    transform: translateY(0);
 }
 .chat-app__status-bar.status-bar--hidden {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-10px);
+    display: none;
 }
 .status-bar__icon {
     display: inline-flex;
@@ -532,7 +529,7 @@ body:not(.light-mode) .chat-app__message.ai-message {
 }
 .status-bar__message {
     flex: 1 1 auto;
-    text-align: left;
+    text-align: center;
     word-break: break-word;
     font-size: 1em;
     min-width: 0;
@@ -547,6 +544,7 @@ body:not(.light-mode) .chat-app__message.ai-message {
     margin-left: 8px;
     opacity: 0.7;
     transition: opacity 0.2s;
+    align-self: center;
 }
 .status-bar__close[style*="display: none"] {
     display: none !important;
