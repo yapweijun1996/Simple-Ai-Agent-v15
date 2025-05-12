@@ -72,6 +72,16 @@ const UIController = (function() {
         // Add scroll-to-bottom button
         setupScrollToBottomButton();
         setupStatusBarClose();
+        // Autofocus message input if login modal is not visible
+        setTimeout(() => {
+            const messageInput = document.getElementById('message-input');
+            const loginModal = document.getElementById('login-modal');
+            if (messageInput && (!loginModal || loginModal.style.display === 'none')) {
+                if (document.activeElement !== messageInput) {
+                    messageInput.focus();
+                }
+            }
+        }, 100);
     }
 
     // Floating scroll-to-bottom button logic

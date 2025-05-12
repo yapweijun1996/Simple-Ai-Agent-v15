@@ -101,6 +101,13 @@ const App = (function() {
             
             // Hide the login modal
             loginModal.style.display = 'none';
+            // Focus the message input after login modal is hidden
+            setTimeout(() => {
+                const messageInput = document.getElementById('message-input');
+                if (messageInput && document.activeElement !== messageInput) {
+                    messageInput.focus();
+                }
+            }, 100);
         } else {
             // Show error message
             document.getElementById('login-error').textContent = 'Invalid password. Please try again.';
