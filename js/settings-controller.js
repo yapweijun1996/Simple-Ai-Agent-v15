@@ -12,7 +12,7 @@ const SettingsController = (function() {
         streaming: false, // Default: unchecked
         enableCoT: true,  // Default: checked
         showThinking: true,
-        selectedModel: 'gpt-4.1-mini', // Default model
+        selectedModel: 'gemini-2.0-flash', // Default model changed to Gemini 2.0 Flash
         darkMode: true, // Default dark mode is now true
         debug: true // Debug logging ON by default
     };
@@ -161,7 +161,7 @@ const SettingsController = (function() {
                 streaming: false,
                 enableCoT: true,
                 showThinking: true,
-                selectedModel: 'gpt-4.1-mini',
+                selectedModel: 'gemini-2.0-flash', // Default model changed to Gemini 2.0 Flash
                 darkMode: true,
                 debug: true,
                 ...savedSettings
@@ -171,7 +171,7 @@ const SettingsController = (function() {
                 streaming: false,
                 enableCoT: true,
                 showThinking: true,
-                selectedModel: 'gpt-4.1-mini',
+                selectedModel: 'gemini-2.0-flash', // Default model changed to Gemini 2.0 Flash
                 darkMode: true,
                 debug: true
             };
