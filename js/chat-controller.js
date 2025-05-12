@@ -570,7 +570,11 @@ If you understand, follow these instructions for every relevant question. Do NOT
         let streamedResponse = '';
         try {
             // Show status bar feedback instead of chat message
-            UIController.showStatus('AI is working...');
+            if (state.settings.enableCoT) {
+                UIController.showStatus('AI is reasoning step by step...', 'info', { showProgress: true });
+            } else {
+                UIController.showStatus('AI is working...');
+            }
             const fullReply = await streamFn(
                 model,
                 state.chatHistory,
@@ -619,7 +623,11 @@ If you understand, follow these instructions for every relevant question. Do NOT
     }
 
     async function handleNonStreamingResponse({ model, requestFn, onToolCall, aiMsgElement }) {
-        UIController.showStatus('AI is working...');
+        if (state.settings.enableCoT) {
+            UIController.showStatus('AI is reasoning step by step...', 'info', { showProgress: true });
+        } else {
+            UIController.showStatus('AI is working...');
+        }
         // Ensure aiMsgElement is always defined
         if (!aiMsgElement) {
             aiMsgElement = UIController.createEmptyAIMessage();

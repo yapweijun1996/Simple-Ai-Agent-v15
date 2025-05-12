@@ -314,6 +314,21 @@ const UIController = (function() {
         bar.textContent = message;
         bar.classList.add('chat-app__status-bar--active');
         bar.style.visibility = '';
+        // Show progress bar if requested
+        if (options.showProgress) {
+            showProgressBar();
+        } else {
+            hideProgressBar();
+        }
+    }
+
+    function showProgressBar() {
+        const progress = document.querySelector('.status-bar__progress');
+        if (progress) progress.style.display = 'block';
+    }
+    function hideProgressBar() {
+        const progress = document.querySelector('.status-bar__progress');
+        if (progress) progress.style.display = 'none';
     }
 
     function clearStatus() {
@@ -325,6 +340,7 @@ const UIController = (function() {
             bar.setAttribute('aria-live', 'polite');
             bar.style.visibility = '';
         }
+        hideProgressBar();
     }
 
     // Spinner for progress feedback (just show plain text)
