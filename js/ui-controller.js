@@ -544,6 +544,9 @@ const UIController = (function() {
      * @param {boolean} hasMore - Whether there is more content to read
      */
     function addReadResult(url, snippet, hasMore) {
+        // Deduplicate by URL
+        if (shownUrls.has(url)) return;
+        shownUrls.add(url);
         const chatWindow = document.getElementById('chat-window');
         const article = document.createElement('article');
         article.className = 'chat-app__message ai-message read-result';
