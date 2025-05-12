@@ -65,6 +65,9 @@ const ApiService = (function() {
      * @returns {Promise<Object>} - The API response
      */
     async function sendOpenAIRequest(model, messages, timeout = 10000) {
+        if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+            throw new Error('OpenAI API key is missing or invalid. Please enter your API key in the settings.');
+        }
         const payload = { model, messages };
         const response = await Utils.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -92,6 +95,9 @@ const ApiService = (function() {
      * @returns {Promise<string>} - The full response text
      */
     async function streamOpenAIRequest(model, messages, onChunk) {
+        if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+            throw new Error('OpenAI API key is missing or invalid. Please enter your API key in the settings.');
+        }
         const response = await Utils.fetchWithRetry('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { 
@@ -111,7 +117,7 @@ const ApiService = (function() {
         let done = false;
         let eventBuffer = '';
         let fullReply = '';
-        const STREAM_TIMEOUT = 30000; // 30 seconds per chunk
+        const STREAM_TIMEOUT = 30000;
         
         while (!done) {
             // Add timeout for each read
