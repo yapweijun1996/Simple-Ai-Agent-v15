@@ -342,7 +342,7 @@ const UIController = (function() {
         }
         // Set icon and message
         icon.innerHTML = iconHtml;
-        msg.textContent = message + (agentDetails ? ' ' + formatAgentDetails(agentDetails) : '');
+        msg.innerHTML = Utils.escapeHtml(message) + (agentDetails ? ' ' + formatAgentDetails(agentDetails) : '');
         // Show bar
         bar.classList.remove('status-bar--hidden');
         // Auto-dismiss for info
