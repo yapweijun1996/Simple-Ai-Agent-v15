@@ -111,9 +111,22 @@ const ApiService = (function() {
         let done = false;
         let eventBuffer = '';
         let fullReply = '';
+        const STREAM_TIMEOUT = 30000; // 30 seconds per chunk
         
         while (!done) {
-            const { value, done: doneReading } = await reader.read();
+            // Add timeout for each read
+            let readResult;
+            try {
+                readResult = await Promise.race([
+                    reader.read(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), STREAM_TIMEOUT))
+                ]);
+            } catch (err) {
+                // Abort the stream if timeout
+                try { reader.cancel(); } catch {}
+                throw new Error('timeout');
+            }
+            const { value, done: doneReading } = readResult;
             done = doneReading;
             
             // Accumulate and split complete SSE events
@@ -220,9 +233,21 @@ const ApiService = (function() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let done = false, buffer = '', fullReply = '';
+        const STREAM_TIMEOUT = 30000; // 30 seconds per chunk
         
         while (!done) {
-            const { value, done: doneReading } = await reader.read();
+            // Add timeout for each read
+            let readResult;
+            try {
+                readResult = await Promise.race([
+                    reader.read(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), STREAM_TIMEOUT))
+                ]);
+            } catch (err) {
+                try { reader.cancel(); } catch {}
+                throw new Error('timeout');
+            }
+            const { value, done: doneReading } = readResult;
             done = doneReading;
             
             buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
