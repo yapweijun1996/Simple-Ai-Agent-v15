@@ -542,17 +542,18 @@ If you understand, follow these instructions for every relevant question. Do NOT
         } catch (error) {
             console.error(`Error sending message (attempt ${retryCount + 1}):`, error);
             let userMsg = '';
-            if (error && error.message && error.message.toLowerCase().includes('timeout')) {
+            if (error && error.userMessage) {
+                userMsg = error.userMessage;
+            } else if (error && error.message && error.message.toLowerCase().includes('timeout')) {
                 if (retryCount < maxRetries) {
-                    // Automatic retry
                     UIController.addMessage('ai', `⏰ Timeout occurred. Retrying... (Attempt ${retryCount + 2} of ${maxRetries + 1})`);
                     await sendMessage(message, retryCount + 1, maxRetries);
+                    UIController.clearStatus();
+                    setInputState(true);
                     return;
                 } else {
-                    // All retries failed, show retry button
                     userMsg = '⏰ The AI took too long to respond after multiple attempts.';
                     UIController.addHtmlMessage('ai', `${userMsg} <button class="retry-btn" style="margin-left:10px;">Retry</button>`);
-                    // Add event listener for retry button
                     setTimeout(() => {
                         const retryBtn = document.querySelector('.retry-btn');
                         if (retryBtn) {
@@ -562,6 +563,8 @@ If you understand, follow these instructions for every relevant question. Do NOT
                             };
                         }
                     }, 100);
+                    UIController.clearStatus();
+                    setInputState(true);
                     return;
                 }
             } else if (error && error.message && (
