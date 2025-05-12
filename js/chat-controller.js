@@ -1049,7 +1049,12 @@ If you understand, follow these instructions for every relevant question. Do NOT
     // Add synthesizeFinalAnswer helper
     async function synthesizeFinalAnswer(summaries) {
         debugLog('synthesizeFinalAnswer', summaries);
-        if (!summaries || !state.originalUserQuestion) return;
+        // Fallback: always update UI and stop workflow if missing state
+        if (!summaries || !state.originalUserQuestion) {
+            UIController.addMessage('ai', 'Sorry, I could not answer your question due to an internal error or missing information.');
+            state.toolWorkflowActive = false;
+            return;
+        }
         const selectedModel = SettingsController.getSettings().selectedModel;
         const FINAL_ANSWER_TIMEOUT = 88000; // 88 seconds, match summarization timeout
         // Use a Chain of Thought prompt for the final answer
