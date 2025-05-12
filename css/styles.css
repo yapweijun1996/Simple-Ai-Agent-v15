@@ -1532,4 +1532,50 @@ body:not(.light-mode) .chat-app__message.plan-message {
     background: linear-gradient(135deg, #2c2a1a 80%, #3a370f 100%);
     border-left: 5px solid #ffd700;
     color: #ffe066;
+}
+
+/* Status Bar Log Styles */
+.status-bar__log-list {
+    max-height: 120px;
+    overflow-y: auto;
+    background: transparent;
+    padding: 0;
+    margin: 0 0 4px 0;
+    border-radius: 6px;
+}
+.status-bar__log-entry {
+    padding: 2px 0;
+    border-bottom: 1px solid #eaf3ff;
+    font-size: 0.97em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.status-bar__log-entry:last-child {
+    border-bottom: none;
+}
+.status-bar__log-time {
+    color: #888;
+    font-size: 0.92em;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+.status-bar__log-icon {
+    margin-right: 2px;
+    flex-shrink: 0;
+}
+.status-bar__collapse, .status-bar__expand, .status-bar__clear {
+    background: #eaf3ff;
+    border: 1px solid #b3d4fc;
+    color: #2a3a4a;
+    font-size: 0.98em;
+    border-radius: 6px;
+    padding: 2px 10px;
+    margin-right: 2px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.status-bar__collapse:hover, .status-bar__expand:hover, .status-bar__clear:hover {
+    background: #d0e7ff;
+    color: #007bff;
 } 
