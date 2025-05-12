@@ -1409,4 +1409,14 @@ body:not(.light-mode) .scroll-to-bottom-btn:hover, body:not(.light-mode) .scroll
 .answer-section table::-webkit-scrollbar-thumb {
   background: #4faaff;
   border-radius: 4px;
+}
+
+.status-bar__details {
+    font-size: 0.95em;
+    color: #4f8cff;
+    margin-left: 18px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    opacity: 0.85;
+    display: inline-block;
 } 

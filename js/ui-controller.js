@@ -287,10 +287,20 @@ const UIController = (function() {
     }
 
     // Add status bar control methods
-    function showStatus(message) {
+    function formatAgentDetails(agentDetails) {
+        if (!agentDetails) return '';
+        const parts = [];
+        if (agentDetails.model) parts.push(`<strong>Model:</strong> ${agentDetails.model}`);
+        if (agentDetails.streaming !== undefined) parts.push(`<strong>Streaming:</strong> ${agentDetails.streaming ? 'On' : 'Off'}`);
+        if (agentDetails.enableCoT !== undefined) parts.push(`<strong>CoT:</strong> ${agentDetails.enableCoT ? 'On' : 'Off'}`);
+        if (agentDetails.showThinking !== undefined) parts.push(`<strong>Thinking:</strong> ${agentDetails.showThinking ? 'On' : 'Off'}`);
+        return parts.length ? `<span class="status-bar__details">${parts.join(' | ')}</span>` : '';
+    }
+
+    function showStatus(message, agentDetails) {
         const bar = document.getElementById('status-bar');
         if (bar) {
-            bar.textContent = message;
+            bar.innerHTML = `${message} ${formatAgentDetails(agentDetails)}`;
             bar.style.visibility = 'visible';
         }
     }
@@ -304,10 +314,10 @@ const UIController = (function() {
     }
 
     // Spinner for progress feedback
-    function showSpinner(message) {
+    function showSpinner(message, agentDetails) {
         const bar = document.getElementById('status-bar');
         if (bar) {
-            bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message}`;
+            bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message} ${formatAgentDetails(agentDetails)}`;
             bar.style.visibility = 'visible';
         }
     }

@@ -74,8 +74,8 @@ Begin Reasoning Now:
             let attempts = 0;
             const MAX_ATTEMPTS = 3;
             while (attempts < MAX_ATTEMPTS) {
-                UIController.showSpinner(`Searching (${engine}) for "${queriesTried[attempts]}"...`);
-                UIController.showStatus(`Searching (${engine}) for "${queriesTried[attempts]}"...`);
+                UIController.showSpinner(`Searching (${engine}) for "${queriesTried[attempts]}"...`, getAgentDetails());
+                UIController.showStatus(`Searching (${engine}) for "${queriesTried[attempts]}"...`, getAgentDetails());
                 let results = [];
                 try {
                     const streamed = [];
@@ -165,8 +165,8 @@ Begin Reasoning Now:
                 UIController.addMessage('ai', 'Error: Invalid read_url argument.');
                 return;
             }
-            UIController.showSpinner(`Reading content from ${args.url}...`);
-            UIController.showStatus(`Reading content from ${args.url}...`);
+            UIController.showSpinner(`Reading content from ${args.url}...`, getAgentDetails());
+            UIController.showStatus(`Reading content from ${args.url}...`, getAgentDetails());
             try {
                 const result = await ToolsService.readUrl(args.url);
                 const start = (typeof args.start === 'number' && args.start >= 0) ? args.start : 0;
@@ -193,7 +193,7 @@ Begin Reasoning Now:
                 UIController.addMessage('ai', 'Error: Invalid instant_answer query.');
                 return;
             }
-            UIController.showStatus(`Retrieving instant answer for "${args.query}"...`);
+            UIController.showStatus(`Retrieving instant answer for "${args.query}"...`, getAgentDetails());
             try {
                 const result = await ToolsService.instantAnswer(args.query);
                 const text = JSON.stringify(result, null, 2);
@@ -378,7 +378,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
         state.originalUserQuestion = message;
         state.toolWorkflowActive = true;
 
-        UIController.showStatus('Sending message...');
+        UIController.showStatus('Sending message...', getAgentDetails());
         setInputState(false);
 
         state.lastThinkingContent = '';
@@ -466,7 +466,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
     }
 
     async function handleNonStreamingResponse({ model, requestFn, onToolCall }) {
-        UIController.showStatus('Waiting for AI response...');
+        UIController.showStatus('Waiting for AI response...', getAgentDetails());
         try {
             const result = await requestFn(model, state.chatHistory);
             if (result.error) {
@@ -501,7 +501,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
     // Refactored handleOpenAIMessage
     async function handleOpenAIMessage(model, message) {
         if (state.settings.streaming) {
-            UIController.showStatus('Streaming response...');
+            UIController.showStatus('Streaming response...', getAgentDetails());
             const aiMsgElement = UIController.createEmptyAIMessage();
             await handleStreamingResponse({ model, aiMsgElement, streamFn: ApiService.streamOpenAIRequest, onToolCall: processToolCall });
         } else {
@@ -698,7 +698,7 @@ Answer: [your final, concise answer based on the reasoning above]`;
         try {
             for (let i = 0; i < urlsToRead.length; i++) {
                 const url = urlsToRead[i];
-                UIController.showSpinner(`Reading ${i + 1} of ${urlsToRead.length} URLs: ${url}...`);
+                UIController.showSpinner(`Reading ${i + 1} of ${urlsToRead.length} URLs: ${url}...`, getAgentDetails());
                 await deepReadUrl(url, 5, 2000);
             }
             // After all reads, auto-summarize
@@ -779,8 +779,8 @@ Answer: [your final, concise answer based on the reasoning above]`;
         if (snippets.length === 1) {
             const prompt = `Summarize the following information extracted from web pages (be as concise as possible):\n\n${snippets[0]}`;
             let aiReply = '';
-            UIController.showSpinner(`Round ${round}: Summarizing information...`);
-            UIController.showStatus(`Round ${round}: Summarizing information...`);
+            UIController.showSpinner(`Round ${round}: Summarizing information...`, getAgentDetails());
+            UIController.showStatus(`Round ${round}: Summarizing information...`, getAgentDetails());
             try {
                 if (selectedModel.startsWith('gpt')) {
                     const res = await ApiService.sendOpenAIRequest(selectedModel, [
@@ -822,8 +822,8 @@ Answer: [your final, concise answer based on the reasoning above]`;
         try {
             for (let i = 0; i < totalBatches; i++) {
                 const batch = batches[i];
-                UIController.showSpinner(`Round ${round}: Summarizing batch ${i + 1} of ${totalBatches}...`);
-                UIController.showStatus(`Round ${round}: Summarizing batch ${i + 1} of ${totalBatches}...`);
+                UIController.showSpinner(`Round ${round}: Summarizing batch ${i + 1} of ${totalBatches}...`, getAgentDetails());
+                UIController.showStatus(`Round ${round}: Summarizing batch ${i + 1} of ${totalBatches}...`, getAgentDetails());
                 const batchPrompt = `Summarize the following information extracted from web pages (be as concise as possible):\n\n${batch.join('\n---\n')}`;
                 let batchReply = '';
                 if (selectedModel.startsWith('gpt')) {
@@ -851,12 +851,12 @@ Answer: [your final, concise answer based on the reasoning above]`;
             // If the combined summaries are still too long, recursively summarize
             const combined = batchSummaries.join('\n---\n');
             if (combined.length > MAX_PROMPT_LENGTH) {
-                UIController.showSpinner(`Round ${round + 1}: Combining summaries...`);
-                UIController.showStatus(`Round ${round + 1}: Combining summaries...`);
+                UIController.showSpinner(`Round ${round + 1}: Combining summaries...`, getAgentDetails());
+                UIController.showStatus(`Round ${round + 1}: Combining summaries...`, getAgentDetails());
                 await summarizeSnippets(batchSummaries, round + 1);
             } else {
-                UIController.showSpinner(`Round ${round}: Finalizing summary...`);
-                UIController.showStatus(`Round ${round}: Finalizing summary...`);
+                UIController.showSpinner(`Round ${round}: Finalizing summary...`, getAgentDetails());
+                UIController.showStatus(`Round ${round}: Finalizing summary...`, getAgentDetails());
                 UIController.addMessage('ai', `Summary:\n${combined}`);
                 // Prompt for final answer after all summaries
                 await synthesizeFinalAnswer(combined);
@@ -907,6 +907,17 @@ Answer: [your final, concise answer based on the reasoning above]`;
             UIController.addMessage('ai', `Final answer synthesis failed. Error: ${err && err.message ? err.message : err}`);
             state.toolWorkflowActive = false;
         }
+    }
+
+    // Helper: Get agent details for status bar
+    function getAgentDetails() {
+        const settings = SettingsController.getSettings();
+        return {
+            model: settings.selectedModel,
+            streaming: settings.streaming,
+            enableCoT: settings.enableCoT,
+            showThinking: settings.showThinking
+        };
     }
 
     // Public API
