@@ -25,6 +25,8 @@ const SettingsController = (function() {
         
         // Create modal from template
         settingsModal = Utils.createFromTemplate('settings-modal-template');
+        settingsModal.setAttribute('role', 'dialog');
+        settingsModal.setAttribute('aria-modal', 'true');
         document.body.appendChild(settingsModal);
         
         // Set initial values based on current settings

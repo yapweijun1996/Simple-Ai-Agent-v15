@@ -52,6 +52,8 @@ const App = (function() {
         if (!loginModal) {
             // Create login modal from template
             loginModal = Utils.createFromTemplate('login-modal-template');
+            loginModal.setAttribute('role', 'dialog');
+            loginModal.setAttribute('aria-modal', 'true');
             document.body.appendChild(loginModal);
             
             // Setup event listeners

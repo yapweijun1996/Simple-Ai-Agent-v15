@@ -182,11 +182,33 @@ const UIController = (function() {
         // Remove existing toggle button if present
         const existingToggle = messageElement.querySelector('.toggle-thinking');
         if (existingToggle) existingToggle.remove();
+        // Remove existing show more button if present
+        const existingShowMore = messageElement.querySelector('.show-more-btn');
+        if (existingShowMore) existingShowMore.remove();
         if (text === '🤔 Thinking...') {
             setThinkingIndicator(contentElement);
             return;
         }
-        setFormattedContent(contentElement, text);
+        // Show more/less for long responses
+        if (text.length > 1000) {
+            const shortText = text.slice(0, 1000) + '...';
+            setFormattedContent(contentElement, shortText);
+            const showMoreBtn = document.createElement('button');
+            showMoreBtn.textContent = 'Show more';
+            showMoreBtn.className = 'show-more-btn';
+            showMoreBtn.onclick = function() {
+                if (showMoreBtn.textContent === 'Show more') {
+                    setFormattedContent(contentElement, text);
+                    showMoreBtn.textContent = 'Show less';
+                } else {
+                    setFormattedContent(contentElement, shortText);
+                    showMoreBtn.textContent = 'Show more';
+                }
+            };
+            contentElement.parentNode.insertBefore(showMoreBtn, contentElement.nextSibling);
+        } else {
+            setFormattedContent(contentElement, text);
+        }
         addToggleButton(messageElement, text);
     }
 
@@ -211,12 +233,10 @@ const UIController = (function() {
         let insideCode = false;
         let codeBlockLang = '';
         let currentText = '';
-        
+        let codeBlockId = 0;
         const lines = text.split('\n');
-        
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
-            
             if (line.startsWith('```')) {
                 if (!insideCode) {
                     // Start of code block
@@ -224,14 +244,14 @@ const UIController = (function() {
                         formatted += `<div>${formatMessageContent(currentText)}</div>`;
                         currentText = '';
                     }
-                    
                     insideCode = true;
                     codeBlockLang = line.slice(3).trim();
-                    formatted += `<pre><code class="language-${codeBlockLang}">`;
+                    codeBlockId++;
+                    formatted += `<div class='code-block-wrapper'><pre><code class="language-${codeBlockLang}" id="code-block-${codeBlockId}">`;
                 } else {
                     // End of code block
                     insideCode = false;
-                    formatted += '</code></pre>';
+                    formatted += `</code></pre><button class='copy-code-btn' data-code-block-id='code-block-${codeBlockId}'>Copy</button></div>`;
                 }
             } else if (insideCode) {
                 // Inside code block
@@ -241,12 +261,25 @@ const UIController = (function() {
                 currentText += (currentText ? '\n' : '') + line;
             }
         }
-        
         // Add any remaining text
         if (currentText) {
             formatted += formatMessageContent(currentText);
         }
-        
+        // Add event listeners for copy buttons after rendering
+        setTimeout(() => {
+            document.querySelectorAll('.copy-code-btn').forEach(btn => {
+                btn.onclick = function() {
+                    const codeId = btn.getAttribute('data-code-block-id');
+                    const codeElem = document.getElementById(codeId);
+                    if (codeElem) {
+                        navigator.clipboard.writeText(codeElem.textContent).then(() => {
+                            btn.textContent = 'Copied!';
+                            setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+                        });
+                    }
+                };
+            });
+        }, 0);
         return formatted;
     }
 
@@ -408,16 +441,31 @@ const UIController = (function() {
     function showError(message) {
         const bar = document.getElementById('status-bar');
         if (bar) {
-            bar.textContent = message;
+            bar.textContent = '';
             bar.style.visibility = 'visible';
             bar.setAttribute('role', 'alert');
             bar.setAttribute('aria-live', 'assertive');
-            setTimeout(() => {
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '×';
+            closeBtn.className = 'error-close-btn';
+            closeBtn.setAttribute('aria-label', 'Close error message');
+            closeBtn.onclick = function() {
                 bar.textContent = '';
                 bar.style.visibility = 'hidden';
                 bar.removeAttribute('role');
                 bar.removeAttribute('aria-live');
-            }, 3000);
+            };
+            bar.appendChild(document.createTextNode(message));
+            bar.appendChild(closeBtn);
+            setTimeout(() => {
+                if (bar.style.visibility === 'visible') {
+                    bar.textContent = '';
+                    bar.style.visibility = 'hidden';
+                    bar.removeAttribute('role');
+                    bar.removeAttribute('aria-live');
+                }
+            }, 5000);
         }
     }
 
