@@ -48,12 +48,13 @@ const ChatController = (function() {
 
     const cotPreamble = `**Chain of Thought Instructions:**
 1.  **Understand:** Briefly rephrase the core problem or question.
-2.  **Deconstruct:** Break the problem down into smaller, logical steps needed to reach the solution.
-3.  **Execute & Explain:** Work through each step sequentially. Show your reasoning, calculations, or data analysis for each step clearly.
-4.  **Synthesize:** Combine the findings from the previous steps to formulate the final conclusion.
-5.  **Final Answer:** State the final answer clearly and concisely, prefixed exactly with "\nFinal Answer:".
+2.  **Plan:** Outline your plan step by step (e.g., "I will first web search for X, then read Y if needed...").
+3.  **Narrate:** For each step, narrate your action before making a tool call (e.g., "Let me search for...").
+4.  **Execute & Explain:** After each tool result, explain what you learned and decide the next step.
+5.  **Synthesize:** Combine the findings from the previous steps to formulate the final conclusion.
+6.  **Final Answer:** State the final answer clearly and concisely, prefixed exactly with "\nFinal Answer:".
 
-**Important:** After each tool call, you must reason with the results before making another tool call. Do NOT output multiple tool calls in a row. If you need to use another tool, first explain what you learned from the previous tool result, then decide if another tool call is needed.
+**Important:** Always narrate your plan and actions before using any tool. After each tool call, explain your reasoning and next step. Do NOT output multiple tool calls in a row without narration. Be transparent and conversational, like a thoughtful human assistant.
 
 Begin Reasoning Now:
 `;
