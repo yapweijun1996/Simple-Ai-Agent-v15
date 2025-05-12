@@ -136,10 +136,6 @@ const ToolsService = (function() {
         }
       }
       throw new Error('All proxies failed');
-      // Show user-friendly error
-      if (typeof UIController !== 'undefined' && UIController.addMessage) {
-        UIController.addMessage('ai', 'Sorry, I could not fetch the requested content due to network restrictions. Please try again later.');
-      }
     }
 
     /**
@@ -173,10 +169,6 @@ const ToolsService = (function() {
         }
       }
       throw new Error('All proxies failed');
-      // Show user-friendly error
-      if (typeof UIController !== 'undefined' && UIController.addMessage) {
-        UIController.addMessage('ai', 'Sorry, I could not fetch the requested content due to network restrictions. Please try again later.');
-      }
     }
 
     /**

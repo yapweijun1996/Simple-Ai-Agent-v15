@@ -26,7 +26,7 @@ const App = (function() {
         ChatController.init(savedSettings);
         
         // Show main container (will be visible but login modal on top)
-        document.getElementById('chat-container').classList.remove('hidden');
+        document.getElementById('chat-container').style.display = 'flex';
         
         // Check for saved password
         checkPasswordOrPrompt();
@@ -52,8 +52,6 @@ const App = (function() {
         if (!loginModal) {
             // Create login modal from template
             loginModal = Utils.createFromTemplate('login-modal-template');
-            loginModal.setAttribute('role', 'dialog');
-            loginModal.setAttribute('aria-modal', 'true');
             document.body.appendChild(loginModal);
             
             // Setup event listeners
@@ -70,8 +68,8 @@ const App = (function() {
             }, 100);
         }
         
-        loginModal.classList.remove('hidden');
-        document.getElementById('login-error').classList.add('hidden');
+        loginModal.style.display = 'flex';
+        document.getElementById('login-error').style.display = 'none';
     }
     
     /**
@@ -84,7 +82,7 @@ const App = (function() {
         
         if (!password) {
             document.getElementById('login-error').textContent = 'Password is required.';
-            document.getElementById('login-error').classList.remove('hidden');
+            document.getElementById('login-error').style.display = 'block';
             return;
         }
         
@@ -102,11 +100,11 @@ const App = (function() {
             }
             
             // Hide the login modal
-            loginModal.classList.add('hidden');
+            loginModal.style.display = 'none';
         } else {
             // Show error message
             document.getElementById('login-error').textContent = 'Invalid password. Please try again.';
-            document.getElementById('login-error').classList.remove('hidden');
+            document.getElementById('login-error').style.display = 'block';
             Utils.clearSavedPassword();
             passwordInput.value = '';
             passwordInput.focus();

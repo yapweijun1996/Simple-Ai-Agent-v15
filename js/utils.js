@@ -74,10 +74,8 @@ const Utils = (function() {
     function createFromTemplate(templateId) {
         const template = document.getElementById(templateId);
         if (!template) {
-            if (typeof UIController !== 'undefined' && UIController.showError) {
-                UIController.showError(`UI template missing: ${templateId}`);
-            }
-            return document.createElement('div'); // fallback
+            console.error(`Template not found: ${templateId}`);
+            return null;
         }
         return template.content.cloneNode(true).firstElementChild;
     }

@@ -25,8 +25,6 @@ const SettingsController = (function() {
         
         // Create modal from template
         settingsModal = Utils.createFromTemplate('settings-modal-template');
-        settingsModal.setAttribute('role', 'dialog');
-        settingsModal.setAttribute('aria-modal', 'true');
         document.body.appendChild(settingsModal);
         
         // Set initial values based on current settings
@@ -85,7 +83,7 @@ const SettingsController = (function() {
         }
         
         // Ensure current settings are reflected when opening
-        settingsModal.classList.remove('hidden');
+        settingsModal.style.display = 'flex';
         document.getElementById('streaming-toggle').checked = settings.streaming;
         document.getElementById('cot-toggle').checked = settings.enableCoT;
         document.getElementById('show-thinking-toggle').checked = settings.showThinking;
@@ -107,7 +105,7 @@ const SettingsController = (function() {
      */
     function hideSettingsModal() {
         if (settingsModal) {
-            settingsModal.classList.add('hidden');
+            settingsModal.style.display = 'none';
             // Restore focus to settings button
             if (showSettingsModal.lastFocused) {
                 showSettingsModal.lastFocused.focus();

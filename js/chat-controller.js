@@ -568,7 +568,6 @@ Answer: [your final, concise answer based on the reasoning above]`;
         if (!state.toolWorkflowActive) return;
         const { tool, arguments: args, skipContinue } = call;
         // Tool call loop protection
-        // Prevent infinite tool call loops by tracking the last call signature and count.
         const callSignature = JSON.stringify({ tool, args });
         if (state.lastToolCall === callSignature) {
             state.lastToolCallCount++;
@@ -769,7 +768,6 @@ Answer: [your final, concise answer based on the reasoning above]`;
     }
 
     // Summarization logic (recursive, context-aware)
-    // If the combined summaries are too long, recursively summarize in batches until short enough for the model.
     async function summarizeSnippets(snippets = null, round = 1) {
         debugLog('summarizeSnippets', { snippets, round });
         if (!snippets) snippets = state.readSnippets;

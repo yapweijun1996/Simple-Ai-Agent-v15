@@ -21,7 +21,7 @@ const UIController = (function() {
      */
     function init() {
         // Show the chat container
-        document.getElementById('chat-container').classList.remove('hidden');
+        document.getElementById('chat-container').style.display = 'flex';
         
         // Add enter key handler for message input
         const messageInput = document.getElementById('message-input');
@@ -91,7 +91,7 @@ const UIController = (function() {
         }
         chatWindow.addEventListener('scroll', function() {
             const atBottom = chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight < 40;
-            btn.classList.toggle('hidden', atBottom);
+            btn.style.display = atBottom ? 'none' : 'block';
         });
     }
 
@@ -182,33 +182,11 @@ const UIController = (function() {
         // Remove existing toggle button if present
         const existingToggle = messageElement.querySelector('.toggle-thinking');
         if (existingToggle) existingToggle.remove();
-        // Remove existing show more button if present
-        const existingShowMore = messageElement.querySelector('.show-more-btn');
-        if (existingShowMore) existingShowMore.remove();
         if (text === '🤔 Thinking...') {
             setThinkingIndicator(contentElement);
             return;
         }
-        // Show more/less for long responses
-        if (text.length > 1000) {
-            const shortText = text.slice(0, 1000) + '...';
-            setFormattedContent(contentElement, shortText);
-            const showMoreBtn = document.createElement('button');
-            showMoreBtn.textContent = 'Show more';
-            showMoreBtn.className = 'show-more-btn';
-            showMoreBtn.onclick = function() {
-                if (showMoreBtn.textContent === 'Show more') {
-                    setFormattedContent(contentElement, text);
-                    showMoreBtn.textContent = 'Show less';
-                } else {
-                    setFormattedContent(contentElement, shortText);
-                    showMoreBtn.textContent = 'Show more';
-                }
-            };
-            contentElement.parentNode.insertBefore(showMoreBtn, contentElement.nextSibling);
-        } else {
-            setFormattedContent(contentElement, text);
-        }
+        setFormattedContent(contentElement, text);
         addToggleButton(messageElement, text);
     }
 
@@ -233,10 +211,12 @@ const UIController = (function() {
         let insideCode = false;
         let codeBlockLang = '';
         let currentText = '';
-        let codeBlockId = 0;
+        
         const lines = text.split('\n');
+        
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
+            
             if (line.startsWith('```')) {
                 if (!insideCode) {
                     // Start of code block
@@ -244,14 +224,14 @@ const UIController = (function() {
                         formatted += `<div>${formatMessageContent(currentText)}</div>`;
                         currentText = '';
                     }
+                    
                     insideCode = true;
                     codeBlockLang = line.slice(3).trim();
-                    codeBlockId++;
-                    formatted += `<div class='code-block-wrapper'><pre><code class="language-${codeBlockLang}" id="code-block-${codeBlockId}">`;
+                    formatted += `<pre><code class="language-${codeBlockLang}">`;
                 } else {
                     // End of code block
                     insideCode = false;
-                    formatted += `</code></pre><button class='copy-code-btn' data-code-block-id='code-block-${codeBlockId}'>Copy</button></div>`;
+                    formatted += '</code></pre>';
                 }
             } else if (insideCode) {
                 // Inside code block
@@ -261,25 +241,12 @@ const UIController = (function() {
                 currentText += (currentText ? '\n' : '') + line;
             }
         }
+        
         // Add any remaining text
         if (currentText) {
             formatted += formatMessageContent(currentText);
         }
-        // Add event listeners for copy buttons after rendering
-        setTimeout(() => {
-            document.querySelectorAll('.copy-code-btn').forEach(btn => {
-                btn.onclick = function() {
-                    const codeId = btn.getAttribute('data-code-block-id');
-                    const codeElem = document.getElementById(codeId);
-                    if (codeElem) {
-                        navigator.clipboard.writeText(codeElem.textContent).then(() => {
-                            btn.textContent = 'Copied!';
-                            setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
-                        });
-                    }
-                };
-            });
-        }, 0);
+        
         return formatted;
     }
 
@@ -298,9 +265,7 @@ const UIController = (function() {
     function clearUserInput() {
         const messageInput = document.getElementById('message-input');
         messageInput.value = '';
-        // TODO: Refactor dynamic height assignment to use CSS variables or classes if possible
         messageInput.style.height = 'auto'; // Reset height
-        messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
     }
 
     /**
@@ -326,7 +291,7 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = message;
-            bar.classList.remove('invisible');
+            bar.style.visibility = 'visible';
         }
     }
 
@@ -334,7 +299,7 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.textContent = '';
-            bar.classList.add('invisible');
+            bar.style.visibility = 'hidden';
         }
     }
 
@@ -343,14 +308,14 @@ const UIController = (function() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = `<span class="spinner" aria-live="polite" aria-busy="true"></span> ${message}`;
-            bar.classList.remove('invisible');
+            bar.style.visibility = 'visible';
         }
     }
     function hideSpinner() {
         const bar = document.getElementById('status-bar');
         if (bar) {
             bar.innerHTML = '';
-            bar.classList.add('invisible');
+            bar.style.visibility = 'hidden';
         }
     }
 
@@ -427,7 +392,7 @@ const UIController = (function() {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
             empty.setAttribute('aria-live', 'polite');
-            empty.innerHTML = '<div class="empty-state-icon">💬</div><div class="empty-state-message">Start a conversation with your AI assistant!<br><span class="empty-state-subtext">Ask anything, get instant answers.</span></div>';
+            empty.innerHTML = '<div style="font-size:2.5em;">💬</div><div style="margin-top:10px;">Start a conversation with your AI assistant!<br><span style="font-size:0.95em;color:#888;">Ask anything, get instant answers.</span></div>';
             chatWindow.appendChild(empty);
         }
     }
@@ -443,31 +408,16 @@ const UIController = (function() {
     function showError(message) {
         const bar = document.getElementById('status-bar');
         if (bar) {
-            bar.textContent = '';
-            bar.classList.remove('invisible');
+            bar.textContent = message;
+            bar.style.visibility = 'visible';
             bar.setAttribute('role', 'alert');
             bar.setAttribute('aria-live', 'assertive');
-            // Add close button
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = '×';
-            closeBtn.className = 'error-close-btn';
-            closeBtn.setAttribute('aria-label', 'Close error message');
-            closeBtn.onclick = function() {
+            setTimeout(() => {
                 bar.textContent = '';
-                bar.classList.add('invisible');
+                bar.style.visibility = 'hidden';
                 bar.removeAttribute('role');
                 bar.removeAttribute('aria-live');
-            };
-            bar.appendChild(document.createTextNode(message));
-            bar.appendChild(closeBtn);
-            setTimeout(() => {
-                if (!bar.classList.contains('invisible')) {
-                    bar.textContent = '';
-                    bar.classList.add('invisible');
-                    bar.removeAttribute('role');
-                    bar.removeAttribute('aria-live');
-                }
-            }, 5000);
+            }, 3000);
         }
     }
 
