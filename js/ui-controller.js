@@ -123,9 +123,10 @@ const UIController = (function() {
      * Adds a message to the chat window
      * @param {string} sender - The sender ('user' or 'ai')
      * @param {string} text - The message text
+     * @param {string} [type] - Optional message type (e.g., 'plan')
      * @returns {Element} - The created message element
      */
-    function addMessage(sender, text) {
+    function addMessage(sender, text, type) {
         hideEmptyState();
         const chatWindow = document.getElementById('chat-window');
         const messageElement = Utils.createFromTemplate('message-template');
@@ -134,6 +135,11 @@ const UIController = (function() {
         messageElement.classList.add(`${sender}-message`);
         // Add fade-in animation
         messageElement.classList.add('fade-in');
+
+        // Add plan/narration class if type is 'plan'
+        if (type === 'plan') {
+            messageElement.classList.add('plan-message');
+        }
 
         // Group consecutive messages from the same sender
         const lastMsg = Array.from(chatWindow.children).reverse().find(el => el.classList && el.classList.contains('chat-app__message'));

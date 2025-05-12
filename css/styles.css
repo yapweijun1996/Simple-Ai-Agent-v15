@@ -1467,4 +1467,24 @@ body:not(.light-mode) .scroll-to-bottom-btn:hover, body:not(.light-mode) .scroll
 #status-bar-under-token.chat-app__status-bar {
     /* No extra styles needed; uses .chat-app__status-bar */
     margin-bottom: 0;
+}
+
+/* Visually distinct style for planning/narration messages */
+.chat-app__message.plan-message {
+    background: linear-gradient(135deg, #fffbe6 80%, #fff7c2 100%);
+    border-left: 5px solid #ffd700;
+    color: #665c00;
+    position: relative;
+}
+.chat-app__message.plan-message::before {
+    content: '📝';
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    font-size: 1.2em;
+}
+body:not(.light-mode) .chat-app__message.plan-message {
+    background: linear-gradient(135deg, #2c2a1a 80%, #3a370f 100%);
+    border-left: 5px solid #ffd700;
+    color: #ffe066;
 } 
